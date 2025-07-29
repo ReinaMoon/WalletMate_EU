@@ -25,6 +25,11 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import com.yourdomain.walletmateeu.ui.components.ClickableFakeTextField
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -79,7 +84,8 @@ fun AddEditTransactionScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(16.dp),
+                .padding(16.dp)
+                .clickable { viewModel.onEvent(AddTransactionEvent.OnDateClick)},
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // 지출 / 수입 선택
@@ -104,15 +110,11 @@ fun AddEditTransactionScreen(
             OutlinedTextField(value = uiState.amount, onValueChange = { viewModel.onEvent(AddTransactionEvent.OnAmountChange(it)) }, label = { Text("Amount") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.fillMaxWidth(), singleLine = true)
 
             // 날짜 선택
-            OutlinedTextField(
+            ClickableFakeTextField(
                 value = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date(uiState.date)),
-                onValueChange = {},
-                readOnly = true,
-                label = { Text("Date") },
-                trailingIcon = { Icon(Icons.Default.DateRange, contentDescription = "Select Date") },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { viewModel.onEvent(AddTransactionEvent.OnDateClick) }
+                label = "Date",
+                onClick = { viewModel.onEvent(AddTransactionEvent.OnDateClick) },
+                trailingIcon = Icons.Default.DateRange
             )
 
             // 카테고리 선택

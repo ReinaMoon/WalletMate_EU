@@ -4,17 +4,17 @@ import android.content.Context
 import androidx.room.Room
 import com.yourdomain.walletmateeu.data.local.AppDatabase
 import com.yourdomain.walletmateeu.data.local.MIGRATION_1_2
+import com.yourdomain.walletmateeu.data.local.MIGRATION_2_3 // <<--- 새 Migration 임포트
 import com.yourdomain.walletmateeu.data.local.dao.CategoryDao
 import com.yourdomain.walletmateeu.data.local.dao.TagDao
 import com.yourdomain.walletmateeu.data.local.dao.TransactionDao
-import com.yourdomain.walletmateeu.data.repository.AppRepository // AppRepository 임포트
+import com.yourdomain.walletmateeu.data.repository.AppRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
-
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -28,8 +28,7 @@ object AppModule {
             AppDatabase::class.java,
             "walletmate_db"
         )
-            .addMigrations(MIGRATION_1_2)
-            // --- 아래 안전장치를 추가합니다. ---
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3) // <<--- 새 Migration 추가
             .fallbackToDestructiveMigration()
             .build()
     }

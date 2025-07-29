@@ -16,7 +16,7 @@ data class TimelineUiState(
     val transactionToEdit: TransactionWithCategory? = null,
     val isEditDialogOpen: Boolean = false,
     val selectedFilter: String = "ALL",
-    val allCategories: List<CategoryEntity> = emptyList() // <<--- 카테고리 목록 추가
+    val allCategories: List<CategoryEntity> = emptyList()
 )
 
 @HiltViewModel
@@ -28,15 +28,25 @@ class TimelineViewModel @Inject constructor(
     val uiState: StateFlow<TimelineUiState> = _uiState.asStateFlow()
 
     init {
+        // 1. 모든 트랜잭션을 구독합니다.
+        val allTransactionsFlow = repository.getAllTransactionsWithCategory()
+        // 2. 모든 카테고리를 구독합니다.
+        val allCategoriesFlow = repository.getAllCategories()
+        // 3. 현재 선택된 필터를 구독합니다.
+        val selectedFilterFlow = _uiState.map { it.selectedFilter }.distinctUntilChanged()
+
+        // 이 세 가지 Flow가 변경될 때마다 조합하여 최종 UI 상태를 만듭니다.
         viewModelScope.launch {
-            // 거래 내역과 카테고리 목록을 모두 구독합니다.
-            repository.getAllTransactionsWithCategory().combine(repository.getAllCategories()) { transactions, categories ->
-                Pair(transactions, categories)
-            }.collect { (transactions, categories) ->
-                _uiState.update { it.copy(
-                    transactions = filterTransactions(transactions, it.selectedFilter),
-                    allCategories = categories
-                ) }
+            combine(allTransactionsFlow, allCategoriesFlow, selectedFilterFlow) { transactions, categories, filter ->
+                TimelineUiState(
+                    transactions = filterTransactions(transactions, filter),
+                    allCategories = categories,
+                    selectedFilter = filter,
+                    isEditDialogOpen = _uiState.value.isEditDialogOpen,
+                    transactionToEdit = _uiState.value.transactionToEdit
+                )
+            }.collect { newState ->
+                _uiState.value = newState
             }
         }
     }
@@ -50,10 +60,8 @@ class TimelineViewModel @Inject constructor(
     }
 
     fun onFilterChange(filter: String) {
-        // 필터만 변경하고, transactions는 init 블록의 collect가 알아서 업데이트합니다.
         _uiState.update { it.copy(selectedFilter = filter) }
     }
-
     fun onTransactionClick(transaction: TransactionWithCategory) {
         _uiState.update { it.copy(transactionToEdit = transaction, isEditDialogOpen = true) }
     }
@@ -66,6 +74,14 @@ class TimelineViewModel @Inject constructor(
         viewModelScope.launch {
             repository.updateTransaction(transaction)
             onDismissEditDialog()
+        }
+    }
+
+    // --- 삭제 함수 추가 ---
+    fun onDeleteTransaction(transactionId: String) {
+        viewModelScope.launch {
+            repository.deleteTransactionById(transactionId)
+            onDismissEditDialog() // 삭제 후 다이얼로그가 열려있었다면 닫습니다.
         }
     }
 }

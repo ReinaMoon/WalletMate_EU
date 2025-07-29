@@ -11,6 +11,7 @@ import javax.inject.Inject
 class SettingsViewModel @Inject constructor(
     private val repository: AppRepository
 ) : ViewModel() {
+
     fun onClearAllData() {
         viewModelScope.launch {
             repository.clearAllData()

@@ -22,8 +22,8 @@ import com.yourdomain.walletmateeu.data.local.model.TransactionWithCategory
 import com.yourdomain.walletmateeu.ui.components.EditTransactionDialog
 import com.yourdomain.walletmateeu.util.DummyData
 import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import java.util.*
+import androidx.compose.material.icons.filled.Category
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -35,11 +35,14 @@ fun TimelineScreen(
 
     if (uiState.isEditDialogOpen && uiState.transactionToEdit != null) {
         EditTransactionDialog(
-            transactionEntity = uiState.transactionToEdit!!.transaction, // <<--- 수정된 부분
+            transactionWithCategory = uiState.transactionToEdit!!,
             allCategories = uiState.allCategories,
             onDismiss = { viewModel.onDismissEditDialog() },
             onConfirm = { updatedTransaction ->
                 viewModel.onUpdateTransaction(updatedTransaction)
+            },
+            onDelete = { transactionId ->
+                viewModel.onDeleteTransaction(transactionId)
             }
         )
     }
@@ -84,8 +87,12 @@ fun TransactionItem(
     onClick: () -> Unit
 ) {
     val transaction = transactionWithCategory.transaction
-    val category = transactionWithCategory.category
-    val categoryColor = try { Color(android.graphics.Color.parseColor(category.color)) } catch (e: Exception) { Color.Black }
+    val category = transactionWithCategory.category // 이제 nullable일 수 있음
+
+    // 카테고리가 null이면 기본값(회색, 기본 아이콘)을 사용
+    val categoryColor = category?.color?.let { try { Color(android.graphics.Color.parseColor(it)) } catch (e: Exception) { Color.Gray } } ?: Color.Gray
+    val categoryIcon = category?.icon?.let { DummyData.categoryIcons[it] } ?: Icons.Default.Category
+    val categoryName = category?.name ?: "Uncategorized"
 
     Card(
         modifier = Modifier
@@ -103,8 +110,8 @@ fun TransactionItem(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = DummyData.categoryIcons[category.icon] ?: Icons.Default.Add,
-                    contentDescription = category.name,
+                    imageVector = categoryIcon,
+                    contentDescription = categoryName,
                     tint = Color.White,
                     modifier = Modifier.size(24.dp)
                 )
@@ -113,7 +120,11 @@ fun TransactionItem(
                 Text(text = transaction.title, style = MaterialTheme.typography.titleMedium)
                 Text(text = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date(transaction.date)), style = MaterialTheme.typography.bodySmall)
             }
-            Text(text = "${transaction.amount} EUR", color = if (transaction.type == "EXPENSE") MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
+            // 금액을 소수점 두 자리로 포맷팅하여 표시
+            Text(
+                text = String.format("%.2f EUR", transaction.amount),
+                color = if (transaction.type == "EXPENSE") MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+            )
         }
     }
 }

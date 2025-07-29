@@ -17,7 +17,7 @@ import java.util.*
 import javax.inject.Inject
 
 // --- UI 상태를 정의하는 데이터 클래스 ---
-data class AddTransactionUiState(
+data class AddEditTransactionUiState(
     val title: String = "",
     val amount: String = "",
     val transactionType: String = "EXPENSE",
@@ -25,7 +25,7 @@ data class AddTransactionUiState(
     val date: Long = System.currentTimeMillis(),
     val isDatePickerDialogVisible: Boolean = false,
     val isEditMode: Boolean = false,
-    val isSaving: Boolean = false
+    val isSaving: Boolean = false // <<--- 중복 저장 방지 상태
 )
 
 // --- UI 이벤트를 정의하는 Sealed Class (이 부분이 누락되었습니다) ---
@@ -47,7 +47,7 @@ class AddEditTransactionViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
-    var uiState by mutableStateOf(AddTransactionUiState())
+    var uiState by mutableStateOf(AddEditTransactionUiState())
         private set
 
     private val _eventChannel = Channel<UiEvent>()
@@ -88,11 +88,11 @@ class AddEditTransactionViewModel @Inject constructor(
         }
     }
 
-    fun onEvent(event: AddTransactionEvent) {
+    fun onEvent(event: AddTransactionEvent) { // <<--- 이름 변경
         when (event) {
             is AddTransactionEvent.OnTitleChange -> uiState = uiState.copy(title = event.title)
             is AddTransactionEvent.OnAmountChange -> {
-                if (event.amount.matches(Regex("^\\d*\\.?\\d*\$"))) {
+                if (event.amount.matches(Regex("^\\d*(\\.\\d{0,2})?\$"))) {
                     uiState = uiState.copy(amount = event.amount)
                 }
             }
@@ -110,18 +110,11 @@ class AddEditTransactionViewModel @Inject constructor(
     }
 
     private fun saveTransaction() {
-        if (uiState.isSaving) return
-        if (uiState.title.isBlank() || uiState.amount.isBlank()) return
+        if (uiState.isSaving || uiState.title.isBlank() || uiState.amount.isBlank()) return
 
         uiState = uiState.copy(isSaving = true)
 
         viewModelScope.launch {
-            val categoryToSave = uiState.selectedCategory ?: getDefaultCategory()
-            if (categoryToSave == null) {
-                uiState = uiState.copy(isSaving = false)
-                return@launch
-            }
-
             if (uiState.isEditMode) {
                 val transactionToUpdate = repository.getTransactionById(currentTransactionId!!)
                 if (transactionToUpdate != null) {
@@ -129,7 +122,7 @@ class AddEditTransactionViewModel @Inject constructor(
                         title = uiState.title,
                         amount = uiState.amount.toDoubleOrNull() ?: 0.0,
                         type = uiState.transactionType,
-                        categoryId = categoryToSave.id,
+                        categoryId = uiState.selectedCategory?.id, // nullable id 저장
                         date = uiState.date,
                         lastModified = System.currentTimeMillis()
                     )
@@ -142,7 +135,7 @@ class AddEditTransactionViewModel @Inject constructor(
                     amount = uiState.amount.toDoubleOrNull() ?: 0.0,
                     type = uiState.transactionType,
                     date = uiState.date,
-                    categoryId = categoryToSave.id,
+                    categoryId = uiState.selectedCategory?.id, // nullable id 저장
                     lastModified = System.currentTimeMillis()
                 )
                 repository.insertTransaction(newTransaction)
@@ -151,7 +144,8 @@ class AddEditTransactionViewModel @Inject constructor(
         }
     }
 
-    private suspend fun getDefaultCategory(): CategoryEntity? {
+
+private suspend fun getDefaultCategory(): CategoryEntity? {
         val defaultId = if (uiState.transactionType == "EXPENSE") "default_expense_id" else "default_income_id"
         return repository.getAllCategories().firstOrNull()?.find { it.id == defaultId }
     }

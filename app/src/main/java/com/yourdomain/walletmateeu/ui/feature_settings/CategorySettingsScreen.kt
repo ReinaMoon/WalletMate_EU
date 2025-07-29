@@ -11,6 +11,8 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
@@ -23,6 +25,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -38,6 +43,8 @@ fun CategorySettingsScreen(
 ) {
     val categories by viewModel.categories.collectAsState()
     val uiState = viewModel.uiState
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
 
     if (uiState.isColorPickerVisible) {
         ColorPickerDialog(
@@ -57,7 +64,7 @@ fun CategorySettingsScreen(
             ) {
                 item { Spacer(modifier = Modifier.height(8.dp)) }
                 items(categories) { category ->
-                    CategoryItem( // 이제 이 아이템은 아래 미리보기와 동일한 스타일로 보입니다.
+                    CategoryItem(
                         category = category,
                         onDeleteClick = { viewModel.onDeleteCategory(category.id) }
                     )
@@ -67,34 +74,30 @@ fun CategorySettingsScreen(
 
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    modifier = Modifier.padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text("Add New Category", style = MaterialTheme.typography.titleMedium)
-
                     Row {
                         FilterChip(selected = uiState.newCategoryType == "EXPENSE", onClick = { viewModel.onNewCategoryTypeChange("EXPENSE") }, label = { Text("Expense") })
                         Spacer(modifier = Modifier.width(8.dp))
                         FilterChip(selected = uiState.newCategoryType == "INCOME", onClick = { viewModel.onNewCategoryTypeChange("INCOME") }, label = { Text("Income") })
                     }
-
-                    // --- 아이콘 선택 UI 수정 ---
-                    Text("Select Icon", style = MaterialTheme.typography.titleSmall)
                     LazyVerticalGrid(
                         columns = GridCells.Adaptive(minSize = 48.dp),
+                        modifier = Modifier.heightIn(max = 104.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.heightIn(max = 112.dp) // 높이를 약간 조정
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         items(DummyData.categoryIcons.toList()) { (iconName, icon) ->
                             val isSelected = uiState.selectedIcon == iconName
                             Box(
                                 modifier = Modifier
-                                    .aspectRatio(1f) // <<--- 1. 찌그러짐 해결: 가로세로 비율을 1:1로 강제
+                                    .aspectRatio(1f)
                                     .clip(CircleShape)
                                     .background(uiState.selectedColor)
                                     .clickable { viewModel.onIconSelected(iconName) }
-                                    .border( // <<--- 2. 선택 피드백 변경: 외곽선으로 세련되게
+                                    .border(
                                         width = 3.dp,
                                         color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
                                         shape = CircleShape
@@ -104,13 +107,12 @@ fun CategorySettingsScreen(
                                 Icon(
                                     imageVector = icon,
                                     contentDescription = iconName,
-                                    tint = Color.White, // 아이콘 색상은 흰색으로 고정
-                                    modifier = Modifier.padding(10.dp) // 아이콘 안쪽 여백
+                                    tint = Color.White,
+                                    modifier = Modifier.padding(10.dp)
                                 )
                             }
                         }
                     }
-
                     Text("Select Color", style = MaterialTheme.typography.titleSmall)
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         items(DummyData.categoryColors) { color ->
@@ -122,8 +124,7 @@ fun CategorySettingsScreen(
                                     .clickable { viewModel.onColorSelected(color) }
                                     .border(
                                         width = 2.dp,
-                                        color = if (uiState.selectedColor.toArgb() == color.toArgb()) MaterialTheme.colorScheme.onSurface
-                                        else Color.Transparent,
+                                        color = if (uiState.selectedColor.toArgb() == color.toArgb()) MaterialTheme.colorScheme.onSurface else Color.Transparent,
                                         shape = CircleShape
                                     )
                             )
@@ -137,13 +138,30 @@ fun CategorySettingsScreen(
                         OutlinedTextField(value = uiState.customColorHex, onValueChange = { viewModel.onCustomColorHexChange(it) }, label = { Text("Hex Code (#RRGGBB)") }, modifier = Modifier.weight(1f), isError = !uiState.isCustomColorValid, singleLine = true)
                         Button(onClick = { viewModel.onColorPickerClick() }) { Text("Pick") }
                     }
-
                     OutlinedTextField(
                         value = uiState.newCategoryName,
                         onValueChange = { viewModel.onNewCategoryNameChange(it) },
                         label = { Text("Category name") },
                         modifier = Modifier.fillMaxWidth(),
-                        trailingIcon = { IconButton(onClick = { viewModel.onAddCategory() }, enabled = uiState.newCategoryName.isNotBlank()) { Icon(Icons.Default.Add, contentDescription = "Add category") } }
+                        trailingIcon = {
+                            IconButton(
+                                onClick = {
+                                    viewModel.onAddCategory()
+                                    keyboardController?.hide()
+                                    focusManager.clearFocus()
+                                },
+                                enabled = uiState.newCategoryName.isNotBlank()
+                            ) { Icon(Icons.Default.Add, contentDescription = "Add category") }
+                        },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                        keyboardActions = KeyboardActions(onDone = {
+                            if (uiState.newCategoryName.isNotBlank()) {
+                                viewModel.onAddCategory()
+                                keyboardController?.hide()
+                                focusManager.clearFocus()
+                            }
+                        })
                     )
                 }
             }

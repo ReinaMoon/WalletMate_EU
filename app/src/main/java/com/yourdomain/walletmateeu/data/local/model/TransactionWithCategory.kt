@@ -10,5 +10,5 @@ data class TransactionWithCategory(
         parentColumn = "categoryId",
         entityColumn = "id"
     )
-    val category: CategoryEntity
+    val category: CategoryEntity? // <<--- Nullable로 변경
 )
