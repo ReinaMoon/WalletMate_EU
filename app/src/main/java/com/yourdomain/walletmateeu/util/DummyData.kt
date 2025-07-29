@@ -11,9 +11,12 @@ import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.Train
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.material.icons.filled.Label
+
 
 object DummyData {
     val categoryIcons = mapOf(
+        "ic_default" to Icons.Default.Label,
         "ic_fastfood" to Icons.Default.Fastfood,
         "ic_shopping_cart" to Icons.Default.ShoppingCart,
         "ic_train" to Icons.Default.Train,

@@ -35,8 +35,7 @@ fun TimelineScreen(
 
     if (uiState.isEditDialogOpen && uiState.transactionToEdit != null) {
         EditTransactionDialog(
-            transactionWithCategory = uiState.transactionToEdit!!,
-            // 수정 다이얼로그에 전체 카테고리 목록을 전달합니다.
+            transactionEntity = uiState.transactionToEdit!!.transaction, // <<--- 수정된 부분
             allCategories = uiState.allCategories,
             onDismiss = { viewModel.onDismissEditDialog() },
             onConfirm = { updatedTransaction ->
@@ -55,7 +54,7 @@ fun TimelineScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues) // FAB에 가려지지 않도록 패딩 적용
+                .padding(paddingValues)
         ) {
             TabRow(selectedTabIndex = when (uiState.selectedFilter) {
                 "ALL" -> 0

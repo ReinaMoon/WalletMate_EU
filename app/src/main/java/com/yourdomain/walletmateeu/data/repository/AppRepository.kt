@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import java.util.UUID
 
@@ -31,7 +32,8 @@ class AppRepository @Inject constructor(
         }
     }
     private suspend fun ensureDefaultCategoriesExist() {
-        val categories = categoryDao.getAllCategories().first() // 현재 모든 카테고리를 한 번 가져옴
+        //val categories = categoryDao.getAllCategories().first() // 현재 모든 카테고리를 한 번 가져옴
+        val categories = categoryDao.getAllCategories().firstOrNull() ?: emptyList()
         val hasDefaultExpense = categories.any { it.name == "Uncategorized" && it.type == "EXPENSE" }
         val hasDefaultIncome = categories.any { it.name == "Uncategorized" && it.type == "INCOME" }
 
