@@ -11,7 +11,7 @@ import androidx.room.PrimaryKey
             entity = CategoryEntity::class,
             parentColumns = ["id"],
             childColumns = ["categoryId"],
-            onDelete = ForeignKey.SET_NULL // 카테고리 삭제 시 categoryId를 NULL로 설정
+            onDelete = ForeignKey.SET_NULL
         )
     ]
 )
@@ -19,8 +19,8 @@ data class TransactionEntity(
     @PrimaryKey val id: String,
     val title: String,
     val amount: Double,
-    val type: String, // "EXPENSE" or "INCOME"
+    val type: String,
     val date: Long,
-    val categoryId: String?, // <<--- Nullable로 변경
+    val categoryId: String?,
     val lastModified: Long
 )

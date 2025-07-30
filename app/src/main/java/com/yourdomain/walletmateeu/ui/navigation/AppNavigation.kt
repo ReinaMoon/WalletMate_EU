@@ -4,60 +4,74 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.yourdomain.walletmateeu.ui.feature_analytics.AnalyticsScreen
-import com.yourdomain.walletmateeu.ui.feature_settings.CategorySettingsScreen
-import com.yourdomain.walletmateeu.ui.feature_settings.SettingsScreen
+import com.yourdomain.walletmateeu.ui.feature_dashboard.DashboardScreen
+import com.yourdomain.walletmateeu.ui.feature_settings.*
 import com.yourdomain.walletmateeu.ui.feature_timeline.AddEditTransactionScreen
-import com.yourdomain.walletmateeu.ui.feature_timeline.TimelineScreen
 
 object Routes {
-    const val TIMELINE = "timeline"
+    const val DASHBOARD = "dashboard"
     const val ANALYTICS = "analytics"
     const val SETTINGS = "settings"
     const val ADD_EDIT_TRANSACTION = "add_edit_transaction"
     const val CATEGORY_SETTINGS = "category_settings"
+    const val TAG_SETTINGS = "tag_settings"
+    const val ICON_PICKER = "icon_picker"
 }
 
 @Composable
 fun AppNavigation(navController: NavHostController, paddingValues: PaddingValues) {
     NavHost(
         navController = navController,
-        startDestination = Routes.TIMELINE,
+        startDestination = Routes.DASHBOARD,
         modifier = Modifier.padding(paddingValues)
     ) {
-        composable(Routes.TIMELINE) {
-            TimelineScreen(
-                onNavigateToAddTransaction = {
-                    navController.navigate(Routes.ADD_EDIT_TRANSACTION) {
-                        // 타임라인 상태는 저장하고 복원
-                        popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                        launchSingleTop = true
-                        restoreState = true
-                    }
-                }
+        composable(Routes.DASHBOARD) {
+            DashboardScreen(
+                onNavigateToAddTransaction = { navController.navigate(Routes.ADD_EDIT_TRANSACTION) }
             )
         }
-        composable(Routes.ANALYTICS) { AnalyticsScreen() }
+        composable(Routes.ANALYTICS) {
+            AnalyticsScreen()
+        }
         composable(Routes.SETTINGS) {
             SettingsScreen(
-                onNavigateToCategorySettings = {
-                    navController.navigate(Routes.CATEGORY_SETTINGS)
-                }
+                onNavigateToCategorySettings = { navController.navigate(Routes.CATEGORY_SETTINGS) },
+                onNavigateToTagSettings = { navController.navigate(Routes.TAG_SETTINGS) }
             )
         }
-        composable(Routes.ADD_EDIT_TRANSACTION) {
-            AddEditTransactionScreen(
-                onSaveCompleted = { navController.popBackStack() }
-            )
+        composable(
+            route = "${Routes.ADD_EDIT_TRANSACTION}?transactionId={transactionId}",
+            arguments = listOf(navArgument("transactionId") { type = NavType.StringType; nullable = true })
+        ) {
+            AddEditTransactionScreen(onSaveCompleted = { navController.popBackStack() })
         }
         composable(Routes.CATEGORY_SETTINGS) {
-            CategorySettingsScreen()
+            CategorySettingsScreen(
+                onNavigateToIconPicker = { navController.navigate(Routes.ICON_PICKER) },
+                navController = navController,
+                // --- 이 부분이 수정되었습니다 ---
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        composable(Routes.TAG_SETTINGS) {
+            TagSettingsScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        composable(Routes.ICON_PICKER) {
+            IconPickerScreen(
+                onIconSelected = { iconName ->
+                    navController.previousBackStackEntry?.savedStateHandle?.set("selected_icon", iconName)
+                    navController.popBackStack()
+                },
+                onNavigateBack = { navController.popBackStack() }
+            )
         }
     }
 }

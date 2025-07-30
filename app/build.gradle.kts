@@ -43,7 +43,7 @@ android {
         compose = true
     }
     composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.8"
+        kotlinCompilerExtensionVersion = "1.5.11"
     }
     packaging {
         resources {
@@ -63,8 +63,6 @@ android {
 
 dependencies {
 
-    // --- Core & UI ---
-    // Jetpack Compose BOM (Bill of Materials) - 라이브러리 간 버전 호환성을 자동으로 맞춰줍니다.
     implementation(platform("androidx.compose:compose-bom:2024.05.00"))
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.0")
@@ -73,36 +71,31 @@ dependencies {
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
-    implementation("androidx.compose.material:material-icons-extended") // 확장 아이콘 라이브러리
+    implementation("androidx.compose.material:material-icons-extended")
+    implementation("androidx.compose.material:material-icons-extended-android:1.6.8")
 
-    // --- Hilt (Dependency Injection) ---
     implementation("com.google.dagger:hilt-android:2.51.1")
     ksp("com.google.dagger:hilt-compiler:2.51.1")
-    implementation("androidx.hilt:hilt-navigation-compose:1.2.0") // hiltViewModel()에 필수
+    implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
 
-    // --- Room (Local Database) ---
     implementation("androidx.room:room-runtime:2.6.1")
     ksp("androidx.room:room-compiler:2.6.1")
     implementation("androidx.room:room-ktx:2.6.1")
 
-    // --- Navigation ---
     implementation("androidx.navigation:navigation-compose:2.7.7")
-
-    // --- ViewModel ---
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.0")
 
-    // --- WorkManager (Background Sync) ---
+    implementation("com.google.accompanist:accompanist-flowlayout:0.32.0")
+    implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
+
     implementation("androidx.work:work-runtime-ktx:2.9.0")
 
-    // --- Google Services (Auth & Drive) ---
     implementation("com.google.android.gms:play-services-auth:21.2.0")
     implementation("com.google.api-client:google-api-client-android:2.4.0")
     implementation("com.google.apis:google-api-services-drive:v3-rev20230822-2.0.0")
 
-    // --- Security (Encryption) ---
     implementation("com.google.crypto.tink:tink-android:1.13.0")
 
-    // --- Testing ---
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")

@@ -19,6 +19,9 @@ import com.yourdomain.walletmateeu.ui.navigation.AppNavigation
 import com.yourdomain.walletmateeu.ui.navigation.BottomNavItem
 import com.yourdomain.walletmateeu.ui.theme.WalletMateEUTheme
 import dagger.hilt.android.AndroidEntryPoint
+import androidx.navigation.NavDestination.Companion.hierarchy
+import androidx.navigation.compose.currentBackStackEntryAsState
+
 
 /**
  * 앱의 유일한 액티비티이자, 모든 UI의 진입점입니다.
@@ -57,34 +60,32 @@ fun MainScreen() {
     }
 }
 
-/**
- * 하단 네비게이션 바 UI를 생성하는 Composable입니다.
- */
 @Composable
 fun BottomNavigationBar(navController: NavController) {
-    // 표시할 탭 아이템 목록
     val items = listOf(
-        BottomNavItem.Timeline,
+        BottomNavItem.Dashboard,
         BottomNavItem.Analytics,
         BottomNavItem.Settings
     )
 
     NavigationBar {
-        // 현재 화면의 경로를 실시간으로 추적합니다.
         val navBackStackEntry by navController.currentBackStackEntryAsState()
-        val currentRoute = navBackStackEntry?.destination?.route
+        val currentDestination = navBackStackEntry?.destination // 현재 목적지를 가져옵니다.
 
-        // 각 아이템을 NavigationBar에 추가합니다.
-        items.forEach { item ->
+        items.forEach { screen ->
             NavigationBarItem(
-                icon = { Icon(imageVector = item.icon, contentDescription = item.title) },
-                label = { Text(text = item.title) },
-                // 현재 경로와 아이템의 경로가 일치하는지 확인하여 선택 상태를 결정합니다.
-                selected = currentRoute == item.route,
+                icon = { Icon(imageVector = screen.icon, contentDescription = screen.title) },
+                label = { Text(text = screen.title) },
+
+                // --- 이 부분이 수정되었습니다 ---
+                // 현재 경로가 각 탭의 라우트 계층에 포함되는지 확인합니다.
+                // 이렇게 하면 'settings' 탭에 있을 때 'category_settings'로 이동해도
+                // 'settings' 탭이 여전히 선택된 상태로 유지됩니다.
+                selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
+                // --- 여기까지 수정 ---
+
                 onClick = {
-                    // 아이템 클릭 시 해당 경로로 이동합니다.
-                    navController.navigate(item.route) {
-                        // 백 스택 관리를 위한 옵션들
+                    navController.navigate(screen.route) {
                         popUpTo(navController.graph.findStartDestination().id) {
                             saveState = true
                         }

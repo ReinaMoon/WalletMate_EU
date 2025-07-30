@@ -7,6 +7,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.yourdomain.walletmateeu.data.local.model.CategoryEntity
+import com.yourdomain.walletmateeu.data.local.model.TagEntity
 import com.yourdomain.walletmateeu.data.local.model.TransactionEntity
 import com.yourdomain.walletmateeu.data.repository.AppRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -16,7 +17,6 @@ import kotlinx.coroutines.launch
 import java.util.*
 import javax.inject.Inject
 
-// --- UI 상태를 정의하는 데이터 클래스 ---
 data class AddEditTransactionUiState(
     val title: String = "",
     val amount: String = "",
@@ -25,21 +25,21 @@ data class AddEditTransactionUiState(
     val date: Long = System.currentTimeMillis(),
     val isDatePickerDialogVisible: Boolean = false,
     val isEditMode: Boolean = false,
-    val isSaving: Boolean = false // <<--- 중복 저장 방지 상태
+    val isSaving: Boolean = false,
+    val selectedTags: List<TagEntity> = emptyList()
 )
 
-// --- UI 이벤트를 정의하는 Sealed Class (이 부분이 누락되었습니다) ---
-sealed class AddTransactionEvent {
-    data class OnTitleChange(val title: String) : AddTransactionEvent()
-    data class OnAmountChange(val amount: String) : AddTransactionEvent()
-    data class OnTypeChange(val type: String) : AddTransactionEvent()
-    data class OnCategorySelect(val category: CategoryEntity) : AddTransactionEvent()
-    object OnDateClick : AddTransactionEvent()
-    data class OnDateSelected(val date: Long) : AddTransactionEvent()
-    object OnDatePickerDismiss : AddTransactionEvent()
-    object OnSaveClick : AddTransactionEvent()
+sealed class AddEditTransactionEvent {
+    data class OnTitleChange(val title: String) : AddEditTransactionEvent()
+    data class OnAmountChange(val amount: String) : AddEditTransactionEvent()
+    data class OnTypeChange(val type: String) : AddEditTransactionEvent()
+    data class OnCategorySelect(val category: CategoryEntity?) : AddEditTransactionEvent()
+    object OnDateClick : AddEditTransactionEvent()
+    data class OnDateSelected(val date: Long) : AddEditTransactionEvent()
+    object OnDatePickerDismiss : AddEditTransactionEvent()
+    data class OnTagSelected(val tag: TagEntity) : AddEditTransactionEvent()
+    object OnSaveClick : AddEditTransactionEvent()
 }
-
 
 @HiltViewModel
 class AddEditTransactionViewModel @Inject constructor(
@@ -55,6 +55,12 @@ class AddEditTransactionViewModel @Inject constructor(
 
     private var currentTransactionId: String? = null
 
+    val allTags: StateFlow<List<TagEntity>> = repository.getAllTags()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
     val categories: StateFlow<List<CategoryEntity>> = repository.getAllCategories()
         .stateIn(
             scope = viewModelScope,
@@ -73,39 +79,49 @@ class AddEditTransactionViewModel @Inject constructor(
 
     private fun loadTransaction(transactionId: String) {
         viewModelScope.launch {
-            val transaction = repository.getTransactionById(transactionId)
-            if (transaction != null) {
+            repository.getTransactionWithTags(transactionId).first()?.let { transactionWithTags ->
+                val transaction = transactionWithTags.transaction
                 val category = categories.first().find { it.id == transaction.categoryId }
                 uiState = uiState.copy(
                     title = transaction.title,
-                    amount = transaction.amount.toString(),
+                    amount = String.format(Locale.US, "%.2f", transaction.amount),
                     transactionType = transaction.type,
                     selectedCategory = category,
                     date = transaction.date,
+                    selectedTags = transactionWithTags.tags,
                     isEditMode = true
                 )
             }
         }
     }
 
-    fun onEvent(event: AddTransactionEvent) { // <<--- 이름 변경
+    fun onEvent(event: AddEditTransactionEvent) {
         when (event) {
-            is AddTransactionEvent.OnTitleChange -> uiState = uiState.copy(title = event.title)
-            is AddTransactionEvent.OnAmountChange -> {
-                if (event.amount.matches(Regex("^\\d*(\\.\\d{0,2})?\$"))) {
+            is AddEditTransactionEvent.OnTitleChange -> uiState = uiState.copy(title = event.title)
+            is AddEditTransactionEvent.OnAmountChange -> {
+                if (event.amount.isEmpty() || event.amount.matches(Regex("^\\d*(\\.\\d{0,2})?\$"))) {
                     uiState = uiState.copy(amount = event.amount)
                 }
             }
-            is AddTransactionEvent.OnTypeChange -> {
+            is AddEditTransactionEvent.OnTypeChange -> {
                 uiState = uiState.copy(transactionType = event.type, selectedCategory = null)
             }
-            is AddTransactionEvent.OnCategorySelect -> uiState = uiState.copy(selectedCategory = event.category)
-            is AddTransactionEvent.OnDateClick -> uiState = uiState.copy(isDatePickerDialogVisible = true)
-            is AddTransactionEvent.OnDateSelected -> {
+            is AddEditTransactionEvent.OnCategorySelect -> uiState = uiState.copy(selectedCategory = event.category)
+            is AddEditTransactionEvent.OnDateClick -> uiState = uiState.copy(isDatePickerDialogVisible = true)
+            is AddEditTransactionEvent.OnDateSelected -> {
                 uiState = uiState.copy(date = event.date, isDatePickerDialogVisible = false)
             }
-            is AddTransactionEvent.OnDatePickerDismiss -> uiState = uiState.copy(isDatePickerDialogVisible = false)
-            is AddTransactionEvent.OnSaveClick -> saveTransaction()
+            is AddEditTransactionEvent.OnDatePickerDismiss -> uiState = uiState.copy(isDatePickerDialogVisible = false)
+            is AddEditTransactionEvent.OnTagSelected -> {
+                val currentTags = uiState.selectedTags.toMutableList()
+                if (currentTags.contains(event.tag)) {
+                    currentTags.remove(event.tag)
+                } else {
+                    currentTags.add(event.tag)
+                }
+                uiState = uiState.copy(selectedTags = currentTags)
+            }
+            is AddEditTransactionEvent.OnSaveClick -> saveTransaction()
         }
     }
 
@@ -115,39 +131,34 @@ class AddEditTransactionViewModel @Inject constructor(
         uiState = uiState.copy(isSaving = true)
 
         viewModelScope.launch {
+            val amountValue = uiState.amount.toDoubleOrNull() ?: 0.0
+
             if (uiState.isEditMode) {
-                val transactionToUpdate = repository.getTransactionById(currentTransactionId!!)
-                if (transactionToUpdate != null) {
-                    val updatedTransaction = transactionToUpdate.copy(
+                repository.getTransactionById(currentTransactionId!!)?.let {
+                    val updatedTransaction = it.copy(
                         title = uiState.title,
-                        amount = uiState.amount.toDoubleOrNull() ?: 0.0,
+                        amount = amountValue,
                         type = uiState.transactionType,
-                        categoryId = uiState.selectedCategory?.id, // nullable id 저장
+                        categoryId = uiState.selectedCategory?.id,
                         date = uiState.date,
                         lastModified = System.currentTimeMillis()
                     )
-                    repository.updateTransaction(updatedTransaction)
+                    repository.updateTransaction(updatedTransaction, uiState.selectedTags)
                 }
             } else {
                 val newTransaction = TransactionEntity(
                     id = UUID.randomUUID().toString(),
                     title = uiState.title,
-                    amount = uiState.amount.toDoubleOrNull() ?: 0.0,
+                    amount = amountValue,
                     type = uiState.transactionType,
                     date = uiState.date,
-                    categoryId = uiState.selectedCategory?.id, // nullable id 저장
+                    categoryId = uiState.selectedCategory?.id,
                     lastModified = System.currentTimeMillis()
                 )
-                repository.insertTransaction(newTransaction)
+                repository.insertTransaction(newTransaction, uiState.selectedTags)
             }
             _eventChannel.send(UiEvent.SaveSuccess)
         }
-    }
-
-
-private suspend fun getDefaultCategory(): CategoryEntity? {
-        val defaultId = if (uiState.transactionType == "EXPENSE") "default_expense_id" else "default_income_id"
-        return repository.getAllCategories().firstOrNull()?.find { it.id == defaultId }
     }
 
     sealed class UiEvent {

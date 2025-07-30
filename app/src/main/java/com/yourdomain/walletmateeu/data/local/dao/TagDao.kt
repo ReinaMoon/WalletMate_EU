@@ -10,6 +10,10 @@ interface TagDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTag(tag: TagEntity)
 
+    // --- 수정된 부분 시작 ---
+    @Update
+    suspend fun updateTag(tag: TagEntity)
+
     @Query("SELECT * FROM tags ORDER BY name ASC")
     fun getAllTags(): Flow<List<TagEntity>>
 
@@ -19,10 +23,19 @@ interface TagDao {
     @Query("DELETE FROM transaction_tag_cross_ref WHERE transactionId = :transactionId AND tagId = :tagId")
     suspend fun removeTagFromTransaction(transactionId: String, tagId: String)
 
-    // --- 아래 함수 추가 ---
+    @Query("DELETE FROM tags WHERE id = :tagId")
+    suspend fun deleteTagById(tagId: String)
+
+    @Query("DELETE FROM transaction_tag_cross_ref WHERE tagId = :tagId")
+    suspend fun deleteTagCrossRefsByTagId(tagId: String)
+    // --- 수정된 부분 끝 ---
+
     @Query("DELETE FROM tags")
     suspend fun deleteAllTags()
 
     @Query("DELETE FROM transaction_tag_cross_ref")
     suspend fun deleteAllTagCrossRefs()
+
+    @Query("DELETE FROM transaction_tag_cross_ref WHERE transactionId = :transactionId")
+    suspend fun deleteAllTagCrossRefsForTransaction(transactionId: String)
 }

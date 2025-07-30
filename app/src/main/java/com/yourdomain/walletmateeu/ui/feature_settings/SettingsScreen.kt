@@ -13,7 +13,9 @@ import androidx.hilt.navigation.compose.hiltViewModel
 @Composable
 fun SettingsScreen(
     onNavigateToCategorySettings: () -> Unit,
+    onNavigateToTagSettings: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel()
+    // <<--- onNavigateBack 파라미터 제거 ---
 ) {
     var showClearDataDialog by remember { mutableStateOf(false) }
 
@@ -38,7 +40,12 @@ fun SettingsScreen(
     }
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Settings") }) }
+        topBar = {
+            TopAppBar(
+                title = { Text("Settings") }, // <<--- 제목 수정
+                navigationIcon = { } // <<--- 뒤로가기 버튼 제거 (빈 값으로 둠)
+            )
+        }
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -54,7 +61,13 @@ fun SettingsScreen(
             ) {
                 Text(text = "Manage Categories", modifier = Modifier.padding(16.dp))
             }
-            // --- 초기화 버튼 추가 ---
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onNavigateToTagSettings)
+            ) {
+                Text(text = "Manage Tags", modifier = Modifier.padding(16.dp))
+            }
             Card(
                 modifier = Modifier
                     .fillMaxWidth()

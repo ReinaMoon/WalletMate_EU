@@ -3,16 +3,8 @@ package com.yourdomain.walletmateeu.data.repository
 import com.yourdomain.walletmateeu.data.local.dao.CategoryDao
 import com.yourdomain.walletmateeu.data.local.dao.TagDao
 import com.yourdomain.walletmateeu.data.local.dao.TransactionDao
-import com.yourdomain.walletmateeu.data.local.model.CategoryEntity
-import com.yourdomain.walletmateeu.data.local.model.TagEntity
-import com.yourdomain.walletmateeu.data.local.model.TransactionEntity
-import com.yourdomain.walletmateeu.data.local.model.TransactionTagCrossRef
-import com.yourdomain.walletmateeu.data.local.model.TransactionWithCategory
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
+import com.yourdomain.walletmateeu.data.local.model.*
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.firstOrNull
-import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 class AppRepository @Inject constructor(
@@ -20,47 +12,60 @@ class AppRepository @Inject constructor(
     private val categoryDao: CategoryDao,
     private val tagDao: TagDao
 ) {
-
-    // --- Transaction ---
-    fun getAllTransactionsWithCategory(): Flow<List<TransactionWithCategory>> {
-        return transactionDao.getAllTransactionsWithCategory()
+    // Transaction
+    fun getAllTransactionsWithCategoryAndTags(): Flow<List<TransactionWithCategoryAndTags>> {
+        return transactionDao.getAllTransactionsWithCategoryAndTags()
     }
-    suspend fun insertTransaction(transaction: TransactionEntity) {
+
+    // --- 추가된 부분 시작 ---
+    fun getTransactionsWithCategoryAndTagsBetweenDates(startDate: Long, endDate: Long): Flow<List<TransactionWithCategoryAndTags>> {
+        return transactionDao.getTransactionsWithCategoryAndTagsBetweenDates(startDate, endDate)
+    }
+    // --- 추가된 부분 끝 ---
+
+    suspend fun insertTransaction(transaction: TransactionEntity, tags: List<TagEntity>) {
         transactionDao.insertTransaction(transaction)
+        tags.forEach { tag ->
+            tagDao.addTagToTransaction(TransactionTagCrossRef(transaction.id, tag.id))
+        }
     }
-    suspend fun updateTransaction(transaction: TransactionEntity) {
+    suspend fun updateTransaction(transaction: TransactionEntity, tags: List<TagEntity>) {
         transactionDao.updateTransaction(transaction)
+        tagDao.deleteAllTagCrossRefsForTransaction(transaction.id)
+        tags.forEach { tag ->
+            tagDao.addTagToTransaction(TransactionTagCrossRef(transaction.id, tag.id))
+        }
     }
-    suspend fun getTransactionById(id: String): TransactionEntity? {
-        return transactionDao.getTransactionById(id)
-    }
-    suspend fun deleteTransactionById(id: String) {
+
+    suspend fun getTransactionById(id: String): TransactionEntity? =
+        transactionDao.getTransactionById(id)
+
+    fun getTransactionWithTags(transactionId: String): Flow<TransactionWithTags?> =
+        transactionDao.getTransactionWithTags(transactionId)
+
+    suspend fun deleteTransactionById(id: String) =
         transactionDao.deleteTransactionById(id)
-    }
 
-    // --- Category ---
-    fun getAllCategories(): Flow<List<CategoryEntity>> {
-        return categoryDao.getAllCategories()
-    }
-    suspend fun insertCategory(category: CategoryEntity) {
-        categoryDao.insertCategory(category)
-    }
-    suspend fun deleteCategoryById(categoryId: String) {
-        categoryDao.deleteCategoryById(categoryId)
-    }
+    // Category
+    fun getAllCategories(): Flow<List<CategoryEntity>> = categoryDao.getAllCategories()
+    suspend fun insertCategory(category: CategoryEntity) = categoryDao.insertCategory(category)
+    suspend fun deleteCategoryById(categoryId: String) = categoryDao.deleteCategoryById(categoryId)
 
-    // --- Tag ---
+    // Tag
     fun getAllTags(): Flow<List<TagEntity>> = tagDao.getAllTags()
     suspend fun insertTag(tag: TagEntity) = tagDao.insertTag(tag)
-    suspend fun addTagToTransaction(crossRef: TransactionTagCrossRef) = tagDao.addTagToTransaction(crossRef)
-    suspend fun removeTagFromTransaction(transactionId: String, tagId: String) = tagDao.removeTagFromTransaction(transactionId, tagId)
+    suspend fun updateTag(tag: TagEntity) = tagDao.updateTag(tag)
 
-    // --- Settings ---
+    suspend fun deleteTagById(tagId: String) {
+        tagDao.deleteTagCrossRefsByTagId(tagId)
+        tagDao.deleteTagById(tagId)
+    }
+
+    // Settings
     suspend fun clearAllData() {
+        tagDao.deleteAllTagCrossRefs()
         transactionDao.deleteAllTransactions()
         categoryDao.deleteAllCategories()
         tagDao.deleteAllTags()
-        tagDao.deleteAllTagCrossRefs()
-        // 앱 재시작 시 기본 카테고리가 다시 생성될 것임
     }
 }
