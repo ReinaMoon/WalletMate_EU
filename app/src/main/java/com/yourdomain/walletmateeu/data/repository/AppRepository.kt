@@ -12,6 +12,11 @@ class AppRepository @Inject constructor(
     private val categoryDao: CategoryDao,
     private val tagDao: TagDao
 ) {
+
+    fun getTransactionsForTag(tagId: String): Flow<List<TransactionWithCategoryAndTags>> {
+        return transactionDao.getTransactionsWithCategoryAndTagsByTagId(tagId)
+    }
+
     // Transaction
     fun getAllTransactionsWithCategoryAndTags(): Flow<List<TransactionWithCategoryAndTags>> {
         return transactionDao.getAllTransactionsWithCategoryAndTags()

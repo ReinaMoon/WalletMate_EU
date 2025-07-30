@@ -36,4 +36,15 @@ interface TransactionDao {
 
     @Query("DELETE FROM transactions")
     suspend fun deleteAllTransactions()
+
+    // --- 이 함수를 추가하세요 ---
+    @Transaction
+    @Query("""
+        SELECT * FROM transactions
+        WHERE id IN (
+            SELECT transactionId FROM transaction_tag_cross_ref WHERE tagId = :tagId
+        )
+        ORDER BY date DESC
+    """)
+    fun getTransactionsWithCategoryAndTagsByTagId(tagId: String): Flow<List<TransactionWithCategoryAndTags>>
 }

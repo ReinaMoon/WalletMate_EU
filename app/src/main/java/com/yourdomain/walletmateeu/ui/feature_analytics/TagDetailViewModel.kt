@@ -1,0 +1,41 @@
+package com.yourdomain.walletmateeu.ui.feature_analytics
+
+import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.yourdomain.walletmateeu.data.local.model.TransactionWithCategoryAndTags
+import com.yourdomain.walletmateeu.data.repository.AppRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.*
+import java.net.URLDecoder
+import javax.inject.Inject
+
+data class TagDetailUiState(
+    val tagName: String = "",
+    val transactions: List<TransactionWithCategoryAndTags> = emptyList(),
+    val totalAmount: Double = 0.0
+)
+
+@HiltViewModel
+class TagDetailViewModel @Inject constructor(
+    private val repository: AppRepository,
+    savedStateHandle: SavedStateHandle
+) : ViewModel() {
+
+    private val tagId: String = savedStateHandle.get<String>("tagId")!!
+    private val tagName: String = URLDecoder.decode(savedStateHandle.get<String>("tagName")!!, "UTF-8")
+
+    val uiState: StateFlow<TagDetailUiState> = repository.getTransactionsForTag(tagId)
+        .map { transactions ->
+            TagDetailUiState(
+                tagName = tagName,
+                transactions = transactions,
+                totalAmount = transactions.sumOf { it.transaction.amount }
+            )
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = TagDetailUiState(tagName = tagName)
+        )
+}

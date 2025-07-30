@@ -10,6 +10,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.yourdomain.walletmateeu.ui.feature_analytics.AnalyticsScreen
+import com.yourdomain.walletmateeu.ui.feature_analytics.TagDetailScreen
 import com.yourdomain.walletmateeu.ui.feature_dashboard.DashboardScreen
 import com.yourdomain.walletmateeu.ui.feature_settings.*
 import com.yourdomain.walletmateeu.ui.feature_timeline.AddEditTransactionScreen
@@ -22,6 +23,7 @@ object Routes {
     const val CATEGORY_SETTINGS = "category_settings"
     const val TAG_SETTINGS = "tag_settings"
     const val ICON_PICKER = "icon_picker"
+    const val TAG_DETAIL = "tag_detail"
 }
 
 @Composable
@@ -37,8 +39,26 @@ fun AppNavigation(navController: NavHostController, paddingValues: PaddingValues
             )
         }
         composable(Routes.ANALYTICS) {
-            AnalyticsScreen()
+            AnalyticsScreen(
+                onNavigateToTagDetail = { tagId, tagName ->
+                    navController.navigate("${Routes.TAG_DETAIL}/$tagId/$tagName")
+                }
+            )
         }
+
+        composable(
+            route = "${Routes.TAG_DETAIL}/{tagId}/{tagName}",
+            arguments = listOf(
+                navArgument("tagId") { type = NavType.StringType },
+                navArgument("tagName") { type = NavType.StringType }
+            )
+        ) {
+            TagDetailScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+
         composable(Routes.SETTINGS) {
             SettingsScreen(
                 onNavigateToCategorySettings = { navController.navigate(Routes.CATEGORY_SETTINGS) },
