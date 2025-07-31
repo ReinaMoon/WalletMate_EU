@@ -89,4 +89,9 @@
     <string name="gallery_button">Gallery</string>
     <string name="camera_button">Camera</string>
     <string name="transaction_detail_title">거래 상세 정보</string>
+    <string name="search_transactions_desc">거래 내역 검색</string>
+    <string name="search_placeholder">제목 또는 태그로 검색</string>
+    <string name="clear_search_desc">검색어 지우기</string>
+    <string name="search_no_results">검색 결과가 없습니다.</string>
+    <string name="this_month_summary">이번 달 요약</string>
 </resources>

@@ -26,8 +26,8 @@ data class DashboardUiState(
     val isEditDialogOpen: Boolean = false,
     val allCategories: List<CategoryEntity> = emptyList(),
     val allTags: List<TagEntity> = emptyList(),
-    //val expenseBarData: BarData? = null,
-    //val expenseCategoriesForChart: List<String> = emptyList(),
+    val expenseBarData: BarData? = null,
+    val expenseCategoriesForChart: List<String> = emptyList(),
     val totalExpense: Double = 0.0,
     val totalIncome: Double = 0.0,
     val balance: Double = 0.0,
@@ -37,7 +37,9 @@ data class DashboardUiState(
     val endDate: Long = 0L,
     val isBottomSheetVisible: Boolean = false,
     val isDateRangePickerVisible: Boolean = false,
-    val currency: String = "EUR"
+    val currency: String = "EUR",
+    val isSearchActive: Boolean = false,
+    val searchQuery: String = ""
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -52,27 +54,33 @@ class DashboardViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            val dateFilterFlow = _uiState.map { Triple(it.dateFilter, it.startDate, it.endDate) }.distinctUntilChanged()
-            val transactionTypeFilterFlow = _uiState.map { it.transactionFilter }.distinctUntilChanged()
+            _uiState
+                .map { Triple(it.dateFilter, it.transactionFilter, it.searchQuery) }
+                .distinctUntilChanged()
+                .flatMapLatest { (dateFilterType, transactionFilter, query) ->
+                    val (start, end) = getDateRange(dateFilterType, _uiState.value.startDate, _uiState.value.endDate)
 
-            dateFilterFlow.flatMapLatest { (filterType, start, end) ->
-                val (startDate, endDate) = if (filterType == DateFilterType.CUSTOM) start to end else getDateRange(filterType)
-                val transactionsFlow = if (filterType == DateFilterType.ALL_TIME) {
-                    repository.getAllTransactionsWithCategoryAndTags()
-                } else {
-                    repository.getTransactionsWithCategoryAndTagsBetweenDates(startDate, endDate)
-                }
+                    val transactionsFlow = when {
+                        query.isNotBlank() -> repository.searchTransactions(query)
+                        dateFilterType == DateFilterType.ALL_TIME -> repository.getAllTransactionsWithCategoryAndTags()
+                        else -> repository.getTransactionsWithCategoryAndTagsBetweenDates(start, end)
+                    }
 
-                combine(
-                    transactionsFlow,
-                    repository.getAllCategories(),
-                    repository.getAllTags(),
-                    transactionTypeFilterFlow,
-                    userPreferencesRepository.currency
-                ) { transactions, categories, tags, transactionFilter, currency ->
-                    updateUiWith(transactions, categories, tags, transactionFilter, currency)
+                    combine(
+                        transactionsFlow,
+                        repository.getAllCategories(),
+                        repository.getAllTags(),
+                        userPreferencesRepository.currency
+                    ) { transactions, categories, tags, currency ->
+                        // 데이터를 묶어서 하위 스트림으로 전달
+                        Triple(transactions, categories, tags) to currency
+                    }
                 }
-            }.collect()
+                .collect { (data, currency) ->
+                    val (transactions, categories, tags) = data
+                    // 최종 UI 상태 업데이트
+                    updateUiWith(transactions, categories, tags, _uiState.value.transactionFilter, currency)
+                }
         }
     }
 
@@ -87,7 +95,23 @@ class DashboardViewModel @Inject constructor(
         val totalExpense = transactions.filter { it.transaction.type == "EXPENSE" }.sumOf { it.transaction.amount }
         val balance = totalIncome - totalExpense
 
+        val expenseByCategory = transactions
+            .filter { it.transaction.type == "EXPENSE" }
+            .groupBy { it.category?.name ?: "Uncategorized" }
+            .mapValues { entry -> entry.value.sumOf { it.transaction.amount } }
+            .toList()
+            .sortedByDescending { (_, value) -> value }
+            .take(5)
 
+        val barEntries = expenseByCategory.mapIndexed { index, (_, sum) -> BarEntry(index.toFloat(), sum.toFloat()) }
+        val barColors = expenseByCategory.map { (name, _) ->
+            categories.find { it.name == name }?.color?.let { try { Color(android.graphics.Color.parseColor(it)).toArgb() } catch (e: Exception) { Color.Gray.toArgb() } } ?: Color.Gray.toArgb()
+        }
+        val barDataSet = BarDataSet(barEntries, "Expenses").apply {
+            colors = barColors
+            setDrawValues(true)
+            valueTextColor = Color.Black.toArgb()
+        }
 
         val filteredTransactions = when (transactionFilter) {
             "INCOME" -> transactions.filter { it.transaction.type == "INCOME" }
@@ -100,11 +124,24 @@ class DashboardViewModel @Inject constructor(
                 transactions = filteredTransactions,
                 allCategories = categories,
                 allTags = tags,
+                expenseBarData = if (barEntries.isNotEmpty()) BarData(barDataSet) else null,
+                expenseCategoriesForChart = expenseByCategory.map { it.first },
                 totalExpense = totalExpense,
                 totalIncome = totalIncome,
                 balance = balance,
                 currency = currency
             )
+        }
+    }
+
+    fun onSearchQueryChange(query: String) {
+        _uiState.update { it.copy(searchQuery = query) }
+    }
+
+    fun onSearchActiveChange(isActive: Boolean) {
+        _uiState.update { it.copy(isSearchActive = isActive) }
+        if (!isActive) {
+            onSearchQueryChange("")
         }
     }
 
@@ -154,7 +191,7 @@ class DashboardViewModel @Inject constructor(
         }
     }
 
-    private fun getDateRange(filterType: DateFilterType): Pair<Long, Long> {
+    private fun getDateRange(filterType: DateFilterType, customStart: Long = 0L, customEnd: Long = 0L): Pair<Long, Long> {
         val calendar = Calendar.getInstance()
         val todayStart = calendar.apply { set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0) }.timeInMillis
         return when (filterType) {
@@ -163,7 +200,7 @@ class DashboardViewModel @Inject constructor(
             DateFilterType.THIS_MONTH -> { val monthStart = calendar.apply { timeInMillis = todayStart; set(Calendar.DAY_OF_MONTH, 1) }.timeInMillis; monthStart to calendar.apply { timeInMillis = monthStart; add(Calendar.MONTH, 1); add(Calendar.MILLISECOND, -1) }.timeInMillis }
             DateFilterType.THIS_YEAR -> { val yearStart = calendar.apply { timeInMillis = todayStart; set(Calendar.DAY_OF_YEAR, 1) }.timeInMillis; yearStart to calendar.apply { timeInMillis = yearStart; add(Calendar.YEAR, 1); add(Calendar.MILLISECOND, -1) }.timeInMillis }
             DateFilterType.ALL_TIME -> 0L to Long.MAX_VALUE
-            DateFilterType.CUSTOM -> throw IllegalArgumentException("Custom date range should be handled separately")
+            DateFilterType.CUSTOM -> customStart to customEnd
         }
     }
 }

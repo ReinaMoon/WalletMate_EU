@@ -41,12 +41,6 @@ interface TransactionDao {
     @Query("DELETE FROM transactions")
     suspend fun deleteAllTransactions()
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertTitleCategoryMap(map: TitleCategoryMap)
-
-    @Query("SELECT categoryId FROM title_category_map WHERE title = :title")
-    suspend fun getCategoryIdForTitle(title: String): String?
-
     @Transaction
     @Query("""
         SELECT * FROM transactions
@@ -56,5 +50,23 @@ interface TransactionDao {
         ORDER BY date DESC
     """)
     fun getTransactionsForTag(tagId: String): Flow<List<TransactionWithCategoryAndTags>>
+
+    // --- 이 함수를 추가하세요 ---
+    @Transaction
+    @Query("""
+        SELECT DISTINCT T.* FROM transactions AS T
+        LEFT JOIN transaction_tag_cross_ref AS TTCR ON T.id = TTCR.transactionId
+        LEFT JOIN tags AS Tag ON TTCR.tagId = Tag.id
+        WHERE T.title LIKE '%' || :query || '%' OR Tag.name LIKE '%' || :query || '%'
+        ORDER BY T.date DESC
+    """)
+    fun searchTransactions(query: String): Flow<List<TransactionWithCategoryAndTags>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertTitleCategoryMap(map: TitleCategoryMap)
+
+    @Query("SELECT categoryId FROM title_category_map WHERE title = :title")
+    suspend fun getCategoryIdForTitle(title: String): String?
+
 
 }

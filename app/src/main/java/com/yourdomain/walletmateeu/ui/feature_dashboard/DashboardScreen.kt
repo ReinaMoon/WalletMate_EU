@@ -18,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -38,9 +39,10 @@ import java.util.*
 fun DashboardScreen(
     viewModel: DashboardViewModel = hiltViewModel(),
     onNavigateToAddTransaction: () -> Unit,
-    onNavigateToTransactionDetail: (String) -> Unit // 상세 화면 이동 콜백
+    onNavigateToTransactionDetail: (String) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val keyboardController = LocalSoftwareKeyboardController.current
     val bottomSheetState = rememberModalBottomSheetState()
 
     if (uiState.isBottomSheetVisible) {
@@ -97,199 +99,124 @@ fun DashboardScreen(
         )
     }
 
-    Scaffold(
-        floatingActionButton = {
-            FloatingActionButton(onClick = onNavigateToAddTransaction) {
-                Icon(Icons.Default.Add, stringResource(R.string.add_transaction_title))
+    Box(Modifier.fillMaxSize()) {
+        Scaffold(
+            topBar = {
+                if (!uiState.isSearchActive) {
+                    CenterAlignedTopAppBar(
+                        title = {}, // No title
+                        actions = {
+                            IconButton(onClick = { viewModel.onSearchActiveChange(true) }) {
+                                Icon(Icons.Default.Search, contentDescription = stringResource(R.string.search_transactions_desc))
+                            }
+                        }
+                    )
+                }
+            },
+            floatingActionButton = {
+                if (!uiState.isSearchActive) {
+                    FloatingActionButton(onClick = onNavigateToAddTransaction) {
+                        Icon(Icons.Default.Add, stringResource(R.string.add_transaction_title))
+                    }
+                }
             }
-        }
-    ) { paddingValues ->
-        LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(paddingValues),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            item {
-                BalanceCard(
-                    balance = uiState.balance,
-                    totalIncome = uiState.totalIncome,
-                    totalExpense = uiState.totalExpense,
-                    currency = uiState.currency
-                )
-            }
-            item {
-                IncomeExpenseProgressBarCard(
-                    totalIncome = uiState.totalIncome,
-                    totalExpense = uiState.totalExpense,
-                    currency = uiState.currency,
-                    dateFilterName = uiState.dateFilter.displayName
-                )
-            }
-            stickyHeader {
-                Column(
-                    modifier = Modifier
-                        .background(MaterialTheme.colorScheme.surface)
-                        .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp))
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(start = 16.dp, end = 8.dp, top = 16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = stringResource(R.string.dashboard_transactions),
-                            style = MaterialTheme.typography.titleLarge
-                        )
-                        Spacer(Modifier.weight(1f))
-                        OutlinedButton(onClick = { viewModel.showFilterBottomSheet(true) }) {
-                            Text(uiState.dateFilter.displayName)
-                            Icon(Icons.Default.ArrowDropDown, contentDescription = stringResource(R.string.analytics_select_period))
+        ) { paddingValues ->
+            // --- 검색 UI (활성화 시 화면 전체를 덮음) ---
+            if (uiState.isSearchActive) {
+                SearchBar(
+                    modifier = Modifier.fillMaxWidth(),
+                    query = uiState.searchQuery,
+                    onQueryChange = viewModel::onSearchQueryChange,
+                    onSearch = { keyboardController?.hide() },
+                    active = true,
+                    onActiveChange = { viewModel.onSearchActiveChange(it) },
+                    placeholder = { Text(stringResource(R.string.search_placeholder)) },
+                    leadingIcon = { IconButton(onClick = { viewModel.onSearchActiveChange(false) }) { Icon(Icons.Default.ArrowBack, stringResource(R.string.back_button_desc)) } },
+                    trailingIcon = {
+                        if (uiState.searchQuery.isNotEmpty()) {
+                            IconButton(onClick = { viewModel.onSearchQueryChange("") }) { Icon(Icons.Default.Close, stringResource(R.string.clear_search_desc)) }
                         }
                     }
-                    val filters = listOf(stringResource(R.string.dashboard_filter_all), stringResource(R.string.dashboard_income), stringResource(R.string.dashboard_expense))
-                    val selectedTabIndex = when (uiState.transactionFilter) { "INCOME" -> 1; "EXPENSE" -> 2; else -> 0 }
-                    TabRow(selectedTabIndex = selectedTabIndex, modifier = Modifier.padding(top = 8.dp)) {
-                        filters.forEachIndexed { index, title ->
-                            Tab(
-                                selected = selectedTabIndex == index,
-                                onClick = { viewModel.onTransactionFilterChanged(when (index) { 1 -> "INCOME"; 2 -> "EXPENSE"; else -> "ALL" }) },
-                                text = { Text(title) }
+                ) {
+                    LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        items(uiState.transactions, key = { it.transaction.id }) { transaction ->
+                            TransactionItem(
+                                transactionWithCategoryAndTags = transaction,
+                                currency = uiState.currency,
+                                onClick = { onNavigateToTransactionDetail(transaction.transaction.id) }
                             )
                         }
                     }
                 }
-            }
-            if (uiState.transactions.isEmpty()) {
-                item {
-                    Box(Modifier.fillMaxWidth().padding(vertical = 32.dp), Alignment.Center) {
-                        Text(stringResource(R.string.dashboard_no_transactions_period), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
             } else {
-                items(uiState.transactions, key = { it.transaction.id }) { transactionWithCategoryAndTags ->
-                    TransactionItem(
-                        transactionWithCategoryAndTags = transactionWithCategoryAndTags,
-                        currency = uiState.currency,
-                        onClick = {
-                            // 수정 다이얼로그 대신 상세 화면으로 이동
-                            onNavigateToTransactionDetail(transactionWithCategoryAndTags.transaction.id)
-                        }
-                    )
-                }
-            }
-            item { Spacer(modifier = Modifier.height(80.dp)) }
-        }
-    }
-}
+                // --- 기본 대시보드 UI ---
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize().padding(paddingValues),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    item {
+                        BalanceCard(
+                            balance = uiState.balance,
+                            totalIncome = uiState.totalIncome,
+                            totalExpense = uiState.totalExpense,
+                            currency = uiState.currency
+                        )
+                    }
+                    item {
+                        IncomeExpenseProgressBarCard(
+                            totalIncome = uiState.totalIncome,
+                            totalExpense = uiState.totalExpense,
+                            currency = uiState.currency,
+                            dateFilterName = uiState.dateFilter.displayName,
+                            onFilterClick = { viewModel.showFilterBottomSheet(true) }
+                        )
+                    }
 
-@Composable
-fun TransactionItem(
-    transactionWithCategoryAndTags: TransactionWithCategoryAndTags,
-    currency: String,
-    onClick: () -> Unit
-) {
-    val transaction = transactionWithCategoryAndTags.transaction
-    val category = transactionWithCategoryAndTags.category
-    val tags = transactionWithCategoryAndTags.tags
-    val categoryColor = category?.color?.let { try { Color(android.graphics.Color.parseColor(it)) } catch (e: Exception) { Color.Gray } } ?: Color.Gray
-    val categoryIcon = category?.icon?.let { IconHelper.getIcon(it) } ?: Icons.Default.Category
-    val categoryName = category?.name ?: "Uncategorized"
+                    stickyHeader {
+                        TransactionListHeader(
+                            filterType = uiState.transactionFilter,
+                            onFilterChanged = viewModel::onTransactionFilterChanged
+                        )
+                    }
 
-    Card(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-    ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier.size(40.dp).clip(CircleShape).background(categoryColor),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = categoryIcon,
-                    contentDescription = categoryName,
-                    tint = Color.White,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-            Spacer(modifier = Modifier.width(16.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(text = transaction.title, style = MaterialTheme.typography.titleMedium)
-                    if (transaction.imageUri != null) {
-                        Icon(
-                            imageVector = Icons.Default.Attachment,
-                            contentDescription = "Attachment",
-                            modifier = Modifier.size(16.dp).padding(start = 4.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    items(uiState.transactions, key = { it.transaction.id }) { transaction ->
+                        TransactionItem(
+                            transactionWithCategoryAndTags = transaction,
+                            currency = uiState.currency,
+                            onClick = { onNavigateToTransactionDetail(transaction.transaction.id) }
                         )
                     }
                 }
-                Text(
-                    text = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date(transaction.date)),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                if (tags.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    FlowRow(mainAxisSpacing = 6.dp, crossAxisSpacing = 4.dp) {
-                        tags.forEach { tag ->
-                            // --- 이 부분이 수정되었습니다 ---
-                            val tagColor = try {
-                                Color(android.graphics.Color.parseColor(tag.color))
-                            } catch (e: Exception) {
-                                MaterialTheme.colorScheme.secondaryContainer
-                            }
-                            Surface(
-                                shape = RoundedCornerShape(8.dp),
-                                color = tagColor, // 태그의 커스텀 색상 적용
-                                contentColor = Color.White // 글자색은 흰색으로 고정하여 가독성 확보
-                            ) {
-                                Text(
-                                    text = "#${tag.name}",
-                                    fontSize = 12.sp,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                )
-                            }
-                            // --- 여기까지 수정 ---
-                        }
-                    }
-                }
             }
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = String.format(Locale.US, "%.2f %s", transaction.amount, currency),
-                color = if (transaction.type == "EXPENSE") MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.SemiBold
-            )
         }
     }
 }
 
 @Composable
-fun BalanceCard(balance: Double, totalIncome: Double, totalExpense: Double, currency: String) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+fun TransactionListHeader(
+    filterType: String,
+    onFilterChanged: (String) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.background)
     ) {
-        Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(stringResource(R.string.dashboard_balance), style = MaterialTheme.typography.titleMedium)
-            Text(text = String.format("%.2f %s", balance, currency), style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(stringResource(R.string.dashboard_income), style = MaterialTheme.typography.bodyMedium)
-                    Text(String.format("%.2f", totalIncome), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-                }
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(stringResource(R.string.dashboard_expense), style = MaterialTheme.typography.bodyMedium)
-                    Text(String.format("%.2f", totalExpense), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.error)
-                }
+        Text(
+            text = stringResource(R.string.dashboard_transactions),
+            style = MaterialTheme.typography.titleLarge,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+        val filters = listOf(stringResource(R.string.dashboard_filter_all), stringResource(R.string.dashboard_income), stringResource(R.string.dashboard_expense))
+        val selectedTabIndex = when (filterType) { "INCOME" -> 1; "EXPENSE" -> 2; else -> 0 }
+        TabRow(selectedTabIndex = selectedTabIndex) {
+            filters.forEachIndexed { index, title ->
+                Tab(
+                    selected = selectedTabIndex == index,
+                    onClick = { onFilterChanged(when (index) { 1 -> "INCOME"; 2 -> "EXPENSE"; else -> "ALL" }) },
+                    text = { Text(title) }
+                )
             }
         }
     }
@@ -300,17 +227,28 @@ fun IncomeExpenseProgressBarCard(
     totalIncome: Double,
     totalExpense: Double,
     currency: String,
-    dateFilterName: String
+    dateFilterName: String,
+    onFilterClick: () -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = stringResource(R.string.income_vs_expense_title, dateFilterName),
-                style = MaterialTheme.typography.titleMedium
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = stringResource(R.string.this_month_summary),
+                    style = MaterialTheme.typography.titleMedium
+                )
+                OutlinedButton(onClick = onFilterClick) {
+                    Text(dateFilterName)
+                    Icon(Icons.Default.ArrowDropDown, contentDescription = stringResource(R.string.analytics_select_period))
+                }
+            }
             Spacer(modifier = Modifier.height(16.dp))
 
             val total = totalIncome + totalExpense
@@ -334,6 +272,75 @@ fun IncomeExpenseProgressBarCard(
             } else {
                 Box(modifier = Modifier.fillMaxWidth().height(100.dp), contentAlignment = Alignment.Center) {
                     Text(stringResource(R.string.dashboard_no_data))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun TransactionItem(
+    transactionWithCategoryAndTags: TransactionWithCategoryAndTags,
+    currency: String,
+    onClick: () -> Unit
+) {
+    val transaction = transactionWithCategoryAndTags.transaction; val category = transactionWithCategoryAndTags.category; val tags = transactionWithCategoryAndTags.tags
+    val categoryColor = category?.color?.let { try { Color(android.graphics.Color.parseColor(it)) } catch (e: Exception) { Color.Gray } } ?: Color.Gray
+    val categoryIcon = category?.icon?.let { IconHelper.getIcon(it) } ?: Icons.Default.Category; val categoryName = category?.name ?: "Uncategorized"
+    Card(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+    ) {
+        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(modifier = Modifier.size(40.dp).clip(CircleShape).background(categoryColor), contentAlignment = Alignment.Center) {
+                Icon(imageVector = categoryIcon, contentDescription = categoryName, tint = Color.White, modifier = Modifier.size(24.dp))
+            }
+            Spacer(modifier = Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(text = transaction.title, style = MaterialTheme.typography.titleMedium)
+                    if (transaction.imageUri != null) {
+                        Icon(imageVector = Icons.Default.Attachment, contentDescription = "Attachment", modifier = Modifier.size(16.dp).padding(start = 4.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+                Text(text = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date(transaction.date)), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (tags.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    FlowRow(mainAxisSpacing = 6.dp, crossAxisSpacing = 4.dp) {
+                        tags.forEach { tag ->
+                            val tagColor = try { Color(android.graphics.Color.parseColor(tag.color)) } catch (e: Exception) { MaterialTheme.colorScheme.secondaryContainer }
+                            Surface(shape = RoundedCornerShape(8.dp), color = tagColor, contentColor = Color.White) {
+                                Text(text = "#${tag.name}", fontSize = 12.sp, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
+                            }
+                        }
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(text = String.format(Locale.US, "%.2f %s", transaction.amount, currency), color = if (transaction.type == "EXPENSE") MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
+        }
+    }
+}
+
+@Composable
+fun BalanceCard(balance: Double, totalIncome: Double, totalExpense: Double, currency: String) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+    ) {
+        Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(stringResource(R.string.dashboard_balance), style = MaterialTheme.typography.titleMedium)
+            Text(text = String.format("%.2f %s", balance, currency), style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(stringResource(R.string.dashboard_income), style = MaterialTheme.typography.bodyMedium)
+                    Text(String.format("%.2f", totalIncome), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(stringResource(R.string.dashboard_expense), style = MaterialTheme.typography.bodyMedium)
+                    Text(String.format("%.2f", totalExpense), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.error)
                 }
             }
         }

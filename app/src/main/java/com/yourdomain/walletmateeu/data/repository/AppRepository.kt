@@ -12,6 +12,11 @@ class AppRepository @Inject constructor(
     private val categoryDao: CategoryDao,
     private val tagDao: TagDao
 ) {
+
+    fun searchTransactions(query: String): Flow<List<TransactionWithCategoryAndTags>> {
+        return transactionDao.searchTransactions(query)
+    }
+
     // Transaction
     fun getAllTransactionsWithCategoryAndTags(): Flow<List<TransactionWithCategoryAndTags>> {
         return transactionDao.getAllTransactionsWithCategoryAndTags()
@@ -82,4 +87,8 @@ class AppRepository @Inject constructor(
         // transactionDao의 올바른 함수 이름인 getTransactionsForTag를 호출합니다.
         return transactionDao.getTransactionsForTag(tagId)
     }
+    suspend fun insertTitleCategoryMap(map: TitleCategoryMap) {
+        transactionDao.insertTitleCategoryMap(map)
+    }
+
 }

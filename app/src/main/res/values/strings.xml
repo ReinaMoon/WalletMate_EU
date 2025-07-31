@@ -90,5 +90,9 @@
     <string name="gallery_button">Gallery</string>
     <string name="camera_button">Camera</string>
     <string name="transaction_detail_title">Transaction Details</string>
-
+    <string name="search_transactions_desc">Search Transactions</string>
+    <string name="search_placeholder">Search by title or tag</string>
+    <string name="clear_search_desc">Clear search</string>
+    <string name="search_no_results">No results found.</string>
+    <string name="this_month_summary">This Month Summary</string>
 </resources>

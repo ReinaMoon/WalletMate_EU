@@ -9,21 +9,17 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.yourdomain.walletmateeu.data.local.model.CategoryEntity
 import com.yourdomain.walletmateeu.data.local.model.TagEntity
+import com.yourdomain.walletmateeu.data.local.model.TitleCategoryMap
 import com.yourdomain.walletmateeu.data.local.model.TransactionEntity
 import com.yourdomain.walletmateeu.data.repository.AppRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.receiveAsFlow
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.util.*
 import javax.inject.Inject
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
-
 
 data class AddEditTransactionUiState(
     val title: String = "",
@@ -63,9 +59,7 @@ class AddEditTransactionViewModel @Inject constructor(
 
     private val _eventChannel = Channel<UiEvent>()
     val events = _eventChannel.receiveAsFlow()
-
     private var currentTransactionId: String? = null
-
     private var searchJob: Job? = null
 
     val allTags: StateFlow<List<TagEntity>> = repository.getAllTags()
@@ -92,37 +86,34 @@ class AddEditTransactionViewModel @Inject constructor(
 
     private fun loadTransaction(transactionId: String) {
         viewModelScope.launch {
-            repository.getTransactionWithTags(transactionId).first()?.let { transactionWithTags ->
-                val transaction = transactionWithTags.transaction
-                val category = categories.first().find { it.id == transaction.categoryId }
+            repository.getTransactionWithCategoryAndTagsById(transactionId).first()?.let { transactionDetails ->
+                val transaction = transactionDetails.transaction
                 uiState = uiState.copy(
                     title = transaction.title,
                     amount = String.format(Locale.US, "%.2f", transaction.amount),
                     transactionType = transaction.type,
-                    selectedCategory = category,
+                    selectedCategory = transactionDetails.category,
                     date = transaction.date,
-                    selectedTags = transactionWithTags.tags,
+                    selectedTags = transactionDetails.tags,
                     imageUri = transaction.imageUri?.let { Uri.parse(it) },
                     isEditMode = true
                 )
             }
         }
     }
-
     fun onEvent(event: AddEditTransactionEvent) {
         when (event) {
             is AddEditTransactionEvent.OnTitleChange -> {
                 uiState = uiState.copy(title = event.title)
-                // --- 스마트 카테고리 추천 로직 ---
-                searchJob?.cancel() // 이전 검색 작업 취소
+                searchJob?.cancel()
                 searchJob = viewModelScope.launch {
-                    delay(500L) // 0.5초 디바운싱
+                    delay(500L) // Debounce for 500ms
                     if (event.title.isNotBlank()) {
-                        val categoryId = repository.getCategoryIdForTitle(event.title)
-                        if (categoryId != null) {
-                            val category = categories.value.find { it.id == categoryId }
-                            if (category != null && category.type == uiState.transactionType) {
-                                uiState = uiState.copy(selectedCategory = category)
+                        repository.getCategoryIdForTitle(event.title)?.let { categoryId ->
+                            categories.value.find { it.id == categoryId }?.let { category ->
+                                if (category.type == uiState.transactionType) {
+                                    uiState = uiState.copy(selectedCategory = category)
+                                }
                             }
                         }
                     }
@@ -151,14 +142,12 @@ class AddEditTransactionViewModel @Inject constructor(
                 }
                 uiState = uiState.copy(selectedTags = currentTags)
             }
-            // --- 이 부분이 추가되었습니다 ---
             is AddEditTransactionEvent.OnImagePicked -> {
                 uiState = uiState.copy(imageUri = event.uri)
             }
             is AddEditTransactionEvent.OnRemoveImage -> {
                 uiState = uiState.copy(imageUri = null)
             }
-            // --- 여기까지 추가 ---
             is AddEditTransactionEvent.OnSaveClick -> saveTransaction()
         }
     }
@@ -168,13 +157,18 @@ class AddEditTransactionViewModel @Inject constructor(
         uiState = uiState.copy(isSaving = true)
 
         viewModelScope.launch {
-            // --- 이 부분이 수정되었습니다 ---
             val amountValue = uiState.amount.toDoubleOrNull() ?: 0.0
+
+            if (uiState.selectedCategory != null && uiState.title.isNotBlank()) {
+                repository.insertTitleCategoryMap(
+                    TitleCategoryMap(uiState.title.trim(), uiState.selectedCategory!!.id)
+                )
+            }
 
             if (uiState.isEditMode) {
                 repository.getTransactionById(currentTransactionId!!)?.let {
                     val updatedTransaction = it.copy(
-                        title = uiState.title,
+                        title = uiState.title.trim(),
                         amount = amountValue,
                         type = uiState.transactionType,
                         categoryId = uiState.selectedCategory?.id,
@@ -187,7 +181,7 @@ class AddEditTransactionViewModel @Inject constructor(
             } else {
                 val newTransaction = TransactionEntity(
                     id = UUID.randomUUID().toString(),
-                    title = uiState.title,
+                    title = uiState.title.trim(),
                     amount = amountValue,
                     type = uiState.transactionType,
                     date = uiState.date,
