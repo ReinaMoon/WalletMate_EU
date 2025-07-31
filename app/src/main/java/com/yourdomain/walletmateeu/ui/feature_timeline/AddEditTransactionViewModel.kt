@@ -21,6 +21,9 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.util.*
 import javax.inject.Inject
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+
 
 data class AddEditTransactionUiState(
     val title: String = "",
@@ -62,6 +65,8 @@ class AddEditTransactionViewModel @Inject constructor(
     val events = _eventChannel.receiveAsFlow()
 
     private var currentTransactionId: String? = null
+
+    private var searchJob: Job? = null
 
     val allTags: StateFlow<List<TagEntity>> = repository.getAllTags()
         .stateIn(
@@ -106,7 +111,23 @@ class AddEditTransactionViewModel @Inject constructor(
 
     fun onEvent(event: AddEditTransactionEvent) {
         when (event) {
-            is AddEditTransactionEvent.OnTitleChange -> uiState = uiState.copy(title = event.title)
+            is AddEditTransactionEvent.OnTitleChange -> {
+                uiState = uiState.copy(title = event.title)
+                // --- 스마트 카테고리 추천 로직 ---
+                searchJob?.cancel() // 이전 검색 작업 취소
+                searchJob = viewModelScope.launch {
+                    delay(500L) // 0.5초 디바운싱
+                    if (event.title.isNotBlank()) {
+                        val categoryId = repository.getCategoryIdForTitle(event.title)
+                        if (categoryId != null) {
+                            val category = categories.value.find { it.id == categoryId }
+                            if (category != null && category.type == uiState.transactionType) {
+                                uiState = uiState.copy(selectedCategory = category)
+                            }
+                        }
+                    }
+                }
+            }
             is AddEditTransactionEvent.OnAmountChange -> {
                 if (event.amount.isEmpty() || event.amount.matches(Regex("^\\d*(\\.\\d{0,2})?\$"))) {
                     uiState = uiState.copy(amount = event.amount)

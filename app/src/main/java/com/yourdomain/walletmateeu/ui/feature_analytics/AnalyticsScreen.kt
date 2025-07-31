@@ -1,23 +1,23 @@
 package com.yourdomain.walletmateeu.ui.feature_analytics
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -43,7 +43,7 @@ fun AnalyticsScreen(
     val pagerState = rememberPagerState(pageCount = { tabTitles.size })
     val scope = rememberCoroutineScope()
     val bottomSheetState = rememberModalBottomSheetState()
-    // ViewModel의 탭 상태와 UI의 탭 상태를 동기화
+
     LaunchedEffect(pagerState.currentPage) {
         viewModel.onTabSelected(pagerState.currentPage)
     }
@@ -56,12 +56,19 @@ fun AnalyticsScreen(
     if (uiState.isFilterSheetVisible) {
         ModalBottomSheet(onDismissRequest = { viewModel.showFilterBottomSheet(false) }, sheetState = bottomSheetState) {
             Column(modifier = Modifier.padding(bottom = 32.dp)) {
-                Text("Select Period", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(16.dp))
+                Text(stringResource(R.string.analytics_select_period), style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(16.dp))
                 DateFilterType.values().filter { it != DateFilterType.CUSTOM }.forEach { filterType ->
-                    ListItem(headlineContent = { Text(filterType.displayName) }, modifier = Modifier.clickable { viewModel.onDateFilterChanged(filterType) })
+                    ListItem(
+                        headlineContent = { Text(filterType.displayName) },
+                        modifier = Modifier.clickable { viewModel.onDateFilterChanged(filterType) }
+                    )
                 }
                 HorizontalDivider()
-                ListItem(headlineContent = { Text("Custom Range...") }, leadingContent = { Icon(Icons.Default.DateRange, null) }, modifier = Modifier.clickable { viewModel.onDateFilterChanged(DateFilterType.CUSTOM) })
+                ListItem(
+                    headlineContent = { Text(stringResource(id = R.string.date_filter_custom)) },
+                    leadingContent = { Icon(Icons.Default.DateRange, null) },
+                    modifier = Modifier.clickable { viewModel.onDateFilterChanged(DateFilterType.CUSTOM) }
+                )
             }
         }
     }
@@ -81,9 +88,9 @@ fun AnalyticsScreen(
                             viewModel.onCustomDateRangeSelected(start, correctedEnd)
                         }
                     }, enabled = datePickerState.selectedEndDateMillis != null
-                ) { Text("OK") }
+                ) { Text(stringResource(R.string.dialog_ok)) }
             },
-            dismissButton = { TextButton(onClick = { viewModel.showDateRangePicker(false) }) { Text("Cancel") } }
+            dismissButton = { TextButton(onClick = { viewModel.showDateRangePicker(false) }) { Text(stringResource(R.string.dialog_cancel)) } }
         ) { DateRangePicker(state = datePickerState, modifier = Modifier.heightIn(max = 500.dp)) }
     }
 
@@ -106,12 +113,20 @@ fun AnalyticsScreen(
                 tabTitles.forEachIndexed { index, title ->
                     Tab(
                         selected = pagerState.currentPage == index,
-                        onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
+                        onClick = {
+                            scope.launch {
+                                pagerState.animateScrollToPage(index)
+                                viewModel.onTabSelected(index)
+                            }
+                        },
                         text = { Text(title) }
                     )
                 }
             }
-            HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.fillMaxSize()
+            ) { page ->
                 when (page) {
                     0 -> CategoryAnalysisPage(uiState)
                     1 -> TagAnalysisPage(uiState, onNavigateToTagDetail)
@@ -120,7 +135,6 @@ fun AnalyticsScreen(
         }
     }
 }
-
 
 @Composable
 fun CategoryAnalysisPage(uiState: AnalyticsUiState) {
@@ -136,16 +150,22 @@ fun CategoryAnalysisPage(uiState: AnalyticsUiState) {
     }
 }
 
-
 @Composable
-fun TagAnalysisPage(uiState: AnalyticsUiState, onNavigateToTagDetail: (tagId: String, tagName: String) -> Unit) {
+fun TagAnalysisPage(
+    uiState: AnalyticsUiState,
+    onNavigateToTagDetail: (tagId: String, tagName: String) -> Unit
+) {
     if (uiState.tagAnalysisList.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize().padding(16.dp), contentAlignment = Alignment.Center) {
             Text(stringResource(R.string.analytics_no_tag_data_period))
         }
         return
     }
-    LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
         items(uiState.tagAnalysisList, key = { it.tag.id }) { tagAnalysis ->
             TagAnalysisItem(
                 tagAnalysis = tagAnalysis,
@@ -161,15 +181,17 @@ fun TagAnalysisPage(uiState: AnalyticsUiState, onNavigateToTagDetail: (tagId: St
 
 @Composable
 fun TagAnalysisItem(tagAnalysis: TagAnalysis, currency: String, onClick: () -> Unit) {
+    val tagColor = try { Color(android.graphics.Color.parseColor(tagAnalysis.tag.color)) } catch (e: Exception) { MaterialTheme.colorScheme.surfaceVariant }
     Card(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-        ){        // <<--- 흰색 배경 추가
+    ) {
         Row(
             modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column {
+            Box(modifier = Modifier.size(10.dp).clip(CircleShape).background(tagColor))
+            Column(modifier = Modifier.padding(start = 12.dp)) {
                 Text("#${tagAnalysis.tag.name}", style = MaterialTheme.typography.titleMedium)
                 Text(
                     stringResource(R.string.tag_detail_transactions_count, tagAnalysis.transactionCount),
@@ -177,7 +199,7 @@ fun TagAnalysisItem(tagAnalysis: TagAnalysis, currency: String, onClick: () -> U
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            Spacer(modifier = Modifier.weight(1f)) // 이 Spacer가 금액을 오른쪽으로 밀어냅니다.
+            Spacer(modifier = Modifier.weight(1f))
             Text(
                 String.format("%.2f %s", tagAnalysis.totalAmount, currency),
                 style = MaterialTheme.typography.titleLarge,
@@ -191,7 +213,7 @@ fun TagAnalysisItem(tagAnalysis: TagAnalysis, currency: String, onClick: () -> U
 fun SummaryCard(totalIncome: Double, totalExpense: Double, currency: String) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface) // <<--- 흰색 배경 추가
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Row(
             modifier = Modifier.padding(16.dp).fillMaxWidth(),
@@ -199,18 +221,18 @@ fun SummaryCard(totalIncome: Double, totalExpense: Double, currency: String) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("Income", style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.dashboard_income), style = MaterialTheme.typography.titleMedium)
                 Text(
-                    String.format("%.2f %s", totalIncome, currency), // %s로 통화 기호 추가
+                    String.format("%.2f %s", totalIncome, currency),
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
                 )
             }
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("Expense", style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.dashboard_expense), style = MaterialTheme.typography.titleMedium)
                 Text(
-                    String.format("%.2f %s", totalExpense, currency), // %s로 통화 기호 추가
+                    String.format("%.2f %s", totalExpense, currency),
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.error
@@ -224,16 +246,16 @@ fun SummaryCard(totalIncome: Double, totalExpense: Double, currency: String) {
 fun TrendChartCard(lineData: LineData?) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface) // <<--- 흰색 배경 추가
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text("Income vs Expense Trend", style = MaterialTheme.typography.titleLarge)
+            Text(stringResource(R.string.analytics_trend), style = MaterialTheme.typography.titleLarge)
             Spacer(modifier = Modifier.height(16.dp))
             if (lineData != null && lineData.entryCount > 0) {
                 LineChartComposable(lineData = lineData, modifier = Modifier.fillMaxWidth().height(250.dp))
             } else {
                 Box(modifier = Modifier.fillMaxWidth().height(250.dp), contentAlignment = Alignment.Center) {
-                    Text("Not enough data to show trend.")
+                    Text(stringResource(R.string.analytics_no_trend_data))
                 }
             }
         }
@@ -244,16 +266,16 @@ fun TrendChartCard(lineData: LineData?) {
 fun ExpenseChartCard(pieData: PieData?) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface) // <<--- 흰색 배경 추가
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
-    Column(modifier = Modifier.padding(16.dp)) {
-            Text("Expenses by Category", style = MaterialTheme.typography.titleLarge)
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(stringResource(R.string.analytics_expenses_by_category), style = MaterialTheme.typography.titleLarge)
             Spacer(modifier = Modifier.height(16.dp))
             if (pieData != null && pieData.entryCount > 0) {
                 PieChartComposable(pieData = pieData, modifier = Modifier.fillMaxWidth().height(300.dp))
             } else {
                 Box(modifier = Modifier.fillMaxWidth().height(300.dp), contentAlignment = Alignment.Center) {
-                    Text("No expense data for this period.")
+                    Text(stringResource(R.string.analytics_no_expense_data_period))
                 }
             }
         }
@@ -264,16 +286,16 @@ fun ExpenseChartCard(pieData: PieData?) {
 fun IncomeChartCard(pieData: PieData?) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface) // <<--- 흰색 배경 추가
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text("Income by Category", style = MaterialTheme.typography.titleLarge)
+            Text(stringResource(R.string.analytics_incomes_by_category), style = MaterialTheme.typography.titleLarge)
             Spacer(modifier = Modifier.height(16.dp))
             if (pieData != null && pieData.entryCount > 0) {
                 PieChartComposable(pieData = pieData, modifier = Modifier.fillMaxWidth().height(300.dp))
             } else {
                 Box(modifier = Modifier.fillMaxWidth().height(300.dp), contentAlignment = Alignment.Center) {
-                    Text("No income data for this period.")
+                    Text(stringResource(R.string.analytics_no_income_data_period))
                 }
             }
         }

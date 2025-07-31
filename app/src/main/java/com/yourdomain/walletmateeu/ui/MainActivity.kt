@@ -50,7 +50,6 @@ fun BottomNavigationBar(navController: NavController) {
     )
 
     NavigationBar(
-        // --- 이 부분이 수정되었습니다 ---
         containerColor = MaterialTheme.colorScheme.errorContainer,
         contentColor = MaterialTheme.colorScheme.onErrorContainer
     ) {
@@ -69,15 +68,21 @@ fun BottomNavigationBar(navController: NavController) {
                 icon = { Icon(imageVector = item.icon, contentDescription = stringResource(id = item.titleResId)) },
                 label = { Text(text = stringResource(id = item.titleResId)) },
                 selected = currentDestination?.hierarchy?.any { it.route == item.route } == true,
+
+                // --- 이 onClick 람다 부분이 수정되었습니다 ---
                 onClick = {
                     navController.navigate(item.route) {
+                        // 그래프의 시작점(각 탭의 첫 화면)까지 백스택을 팝업합니다.
                         popUpTo(navController.graph.findStartDestination().id) {
                             saveState = true
                         }
+                        // 동일한 탭을 다시 선택했을 때 여러 복사본이 생기는 것을 방지합니다.
                         launchSingleTop = true
+                        // 탭을 다시 선택했을 때 이전 상태를 복원합니다.
                         restoreState = true
                     }
                 }
+                // --- 여기까지 수정 ---
             )
         }
     }

@@ -12,24 +12,25 @@ class AppRepository @Inject constructor(
     private val categoryDao: CategoryDao,
     private val tagDao: TagDao
 ) {
-
-    fun getTransactionsForTag(tagId: String): Flow<List<TransactionWithCategoryAndTags>> {
-        return transactionDao.getTransactionsWithCategoryAndTagsByTagId(tagId)
-    }
-
     // Transaction
     fun getAllTransactionsWithCategoryAndTags(): Flow<List<TransactionWithCategoryAndTags>> {
         return transactionDao.getAllTransactionsWithCategoryAndTags()
     }
 
-    // --- 추가된 부분 시작 ---
     fun getTransactionsWithCategoryAndTagsBetweenDates(startDate: Long, endDate: Long): Flow<List<TransactionWithCategoryAndTags>> {
         return transactionDao.getTransactionsWithCategoryAndTagsBetweenDates(startDate, endDate)
     }
-    // --- 추가된 부분 끝 ---
+
+    // --- 이 함수를 추가하세요 ---
+    fun getTransactionWithCategoryAndTagsById(id: String): Flow<TransactionWithCategoryAndTags?> {
+        return transactionDao.getTransactionWithCategoryAndTagsById(id)
+    }
 
     suspend fun insertTransaction(transaction: TransactionEntity, tags: List<TagEntity>) {
         transactionDao.insertTransaction(transaction)
+        transaction.categoryId?.let {
+            transactionDao.insertTitleCategoryMap(TitleCategoryMap(transaction.title, it))
+        }
         tags.forEach { tag ->
             tagDao.addTagToTransaction(TransactionTagCrossRef(transaction.id, tag.id))
         }
@@ -51,6 +52,10 @@ class AppRepository @Inject constructor(
     suspend fun deleteTransactionById(id: String) =
         transactionDao.deleteTransactionById(id)
 
+    suspend fun getCategoryIdForTitle(title: String): String? {
+        return transactionDao.getCategoryIdForTitle(title)
+    }
+
     // Category
     fun getAllCategories(): Flow<List<CategoryEntity>> = categoryDao.getAllCategories()
     suspend fun insertCategory(category: CategoryEntity) = categoryDao.insertCategory(category)
@@ -60,7 +65,6 @@ class AppRepository @Inject constructor(
     fun getAllTags(): Flow<List<TagEntity>> = tagDao.getAllTags()
     suspend fun insertTag(tag: TagEntity) = tagDao.insertTag(tag)
     suspend fun updateTag(tag: TagEntity) = tagDao.updateTag(tag)
-
     suspend fun deleteTagById(tagId: String) {
         tagDao.deleteTagCrossRefsByTagId(tagId)
         tagDao.deleteTagById(tagId)
@@ -72,5 +76,10 @@ class AppRepository @Inject constructor(
         transactionDao.deleteAllTransactions()
         categoryDao.deleteAllCategories()
         tagDao.deleteAllTags()
+    }
+
+    fun getTransactionsForTag(tagId: String): Flow<List<TransactionWithCategoryAndTags>> {
+        // transactionDao의 올바른 함수 이름인 getTransactionsForTag를 호출합니다.
+        return transactionDao.getTransactionsForTag(tagId)
     }
 }

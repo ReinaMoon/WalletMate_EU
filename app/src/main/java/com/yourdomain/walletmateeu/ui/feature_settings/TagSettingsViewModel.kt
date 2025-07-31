@@ -3,10 +3,13 @@ package com.yourdomain.walletmateeu.ui.feature_settings
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.yourdomain.walletmateeu.data.local.model.TagEntity
 import com.yourdomain.walletmateeu.data.repository.AppRepository
+import com.yourdomain.walletmateeu.util.DummyData
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -30,32 +33,37 @@ class TagSettingsViewModel @Inject constructor(
 
     var newTagName by mutableStateOf("")
         private set
+    var selectedColor by mutableStateOf(DummyData.categoryColors.first()) // <<--- 색상 상태 추가
+        private set
 
-    // State for managing the edit dialog
     var tagToEdit by mutableStateOf<TagEntity?>(null)
         private set
     var editedTagName by mutableStateOf("")
         private set
 
-    // State for managing the delete confirmation dialog
     var tagToDelete by mutableStateOf<TagEntity?>(null)
         private set
 
-    // --- Event Handlers for Creating a Tag ---
     fun onNewTagNameChange(name: String) {
         newTagName = name
+    }
+
+    fun onColorSelected(color: Color) { // <<--- 색상 선택 핸들러 추가
+        selectedColor = color
     }
 
     fun onAddTag() {
         if (newTagName.isBlank()) return
 
         viewModelScope.launch {
+            val colorString = String.format("#%08X", selectedColor.toArgb())
             val newTag = TagEntity(
                 id = UUID.randomUUID().toString(),
-                name = newTagName.trim().replace(" ", "_") // Replace spaces with underscores
+                name = newTagName.trim().replace(" ", "_"),
+                color = colorString // <<--- 색상 저장
             )
             repository.insertTag(newTag)
-            newTagName = "" // Reset input field
+            newTagName = "" // 입력 필드 초기화
         }
     }
 

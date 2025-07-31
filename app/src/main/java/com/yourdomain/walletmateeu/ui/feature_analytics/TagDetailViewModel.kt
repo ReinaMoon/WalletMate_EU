@@ -15,20 +15,21 @@ data class TagDetailUiState(
     val tagName: String = "",
     val transactions: List<TransactionWithCategoryAndTags> = emptyList(),
     val totalAmount: Double = 0.0,
-    val currency: String = "EUR" // 통화 상태 추가
+    val currency: String = "EUR"
 )
 
 @HiltViewModel
 class TagDetailViewModel @Inject constructor(
     private val repository: AppRepository,
     savedStateHandle: SavedStateHandle,
-    userPreferencesRepository: UserPreferencesRepository // Repository 주입
+    userPreferencesRepository: UserPreferencesRepository
 ) : ViewModel() {
 
     private val tagId: String = savedStateHandle.get<String>("tagId")!!
     private val tagName: String = URLDecoder.decode(savedStateHandle.get<String>("tagName")!!, "UTF-8")
 
     val uiState: StateFlow<TagDetailUiState> = combine(
+        // --- 이제 이 함수 호출이 정상적으로 동작합니다 ---
         repository.getTransactionsForTag(tagId),
         userPreferencesRepository.currency
     ) { transactions, currency ->

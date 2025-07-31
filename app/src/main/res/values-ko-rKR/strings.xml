@@ -88,4 +88,5 @@
     <string name="remove_image_desc">Remove Image</string>
     <string name="gallery_button">Gallery</string>
     <string name="camera_button">Camera</string>
+    <string name="transaction_detail_title">거래 상세 정보</string>
 </resources>

@@ -238,10 +238,16 @@ fun TransactionItem(
                     Spacer(modifier = Modifier.height(8.dp))
                     FlowRow(mainAxisSpacing = 6.dp, crossAxisSpacing = 4.dp) {
                         tags.forEach { tag ->
+                            // --- 이 부분이 수정되었습니다 ---
+                            val tagColor = try {
+                                Color(android.graphics.Color.parseColor(tag.color))
+                            } catch (e: Exception) {
+                                MaterialTheme.colorScheme.secondaryContainer
+                            }
                             Surface(
                                 shape = RoundedCornerShape(8.dp),
-                                color = MaterialTheme.colorScheme.secondaryContainer,
-                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                color = tagColor, // 태그의 커스텀 색상 적용
+                                contentColor = Color.White // 글자색은 흰색으로 고정하여 가독성 확보
                             ) {
                                 Text(
                                     text = "#${tag.name}",
@@ -249,6 +255,7 @@ fun TransactionItem(
                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                                 )
                             }
+                            // --- 여기까지 수정 ---
                         }
                     }
                 }

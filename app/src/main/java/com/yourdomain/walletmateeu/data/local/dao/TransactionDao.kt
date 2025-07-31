@@ -1,6 +1,7 @@
 package com.yourdomain.walletmateeu.data.local.dao
 
 import androidx.room.*
+import com.yourdomain.walletmateeu.data.local.model.TitleCategoryMap
 import com.yourdomain.walletmateeu.data.local.model.TransactionEntity
 import com.yourdomain.walletmateeu.data.local.model.TransactionWithCategoryAndTags
 import com.yourdomain.walletmateeu.data.local.model.TransactionWithTags
@@ -15,11 +16,14 @@ interface TransactionDao {
     @Query("SELECT * FROM transactions ORDER BY date DESC")
     fun getAllTransactionsWithCategoryAndTags(): Flow<List<TransactionWithCategoryAndTags>>
 
-    // --- 추가된 부분 시작 ---
     @Transaction
     @Query("SELECT * FROM transactions WHERE date BETWEEN :startDate AND :endDate ORDER BY date DESC")
     fun getTransactionsWithCategoryAndTagsBetweenDates(startDate: Long, endDate: Long): Flow<List<TransactionWithCategoryAndTags>>
-    // --- 추가된 부분 끝 ---
+
+    // --- 이 함수를 추가하세요 ---
+    @Transaction
+    @Query("SELECT * FROM transactions WHERE id = :id")
+    fun getTransactionWithCategoryAndTagsById(id: String): Flow<TransactionWithCategoryAndTags?>
 
     @Update
     suspend fun updateTransaction(transaction: TransactionEntity)
@@ -37,7 +41,12 @@ interface TransactionDao {
     @Query("DELETE FROM transactions")
     suspend fun deleteAllTransactions()
 
-    // --- 이 함수를 추가하세요 ---
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertTitleCategoryMap(map: TitleCategoryMap)
+
+    @Query("SELECT categoryId FROM title_category_map WHERE title = :title")
+    suspend fun getCategoryIdForTitle(title: String): String?
+
     @Transaction
     @Query("""
         SELECT * FROM transactions
@@ -46,5 +55,6 @@ interface TransactionDao {
         )
         ORDER BY date DESC
     """)
-    fun getTransactionsWithCategoryAndTagsByTagId(tagId: String): Flow<List<TransactionWithCategoryAndTags>>
+    fun getTransactionsForTag(tagId: String): Flow<List<TransactionWithCategoryAndTags>>
+
 }

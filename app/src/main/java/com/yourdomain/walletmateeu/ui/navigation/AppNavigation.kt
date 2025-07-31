@@ -14,6 +14,7 @@ import com.yourdomain.walletmateeu.ui.feature_analytics.TagDetailScreen
 import com.yourdomain.walletmateeu.ui.feature_dashboard.DashboardScreen
 import com.yourdomain.walletmateeu.ui.feature_settings.*
 import com.yourdomain.walletmateeu.ui.feature_timeline.AddEditTransactionScreen
+import com.yourdomain.walletmateeu.ui.feature_dashboard.TransactionDetailScreen
 
 object Routes {
     const val DASHBOARD = "dashboard"
@@ -37,7 +38,6 @@ fun AppNavigation(navController: NavHostController, paddingValues: PaddingValues
         composable(Routes.DASHBOARD) {
             DashboardScreen(
                 onNavigateToAddTransaction = { navController.navigate(Routes.ADD_EDIT_TRANSACTION) },
-                // <<--- 거래 상세 화면으로 이동하는 콜백 추가 ---
                 onNavigateToTransactionDetail = { transactionId ->
                     navController.navigate("${Routes.TRANSACTION_DETAIL}/$transactionId")
                 }
@@ -66,8 +66,14 @@ fun AppNavigation(navController: NavHostController, paddingValues: PaddingValues
         composable(
             route = "${Routes.TRANSACTION_DETAIL}/{transactionId}",
             arguments = listOf(navArgument("transactionId") { type = NavType.StringType })
-        ) {
-
+        ) { backStackEntry ->
+            val transactionId = backStackEntry.arguments?.getString("transactionId") ?: ""
+            TransactionDetailScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToEdit = {
+                    navController.navigate("${Routes.ADD_EDIT_TRANSACTION}?transactionId=$it")
+                }
+            )
         }
 
         composable(Routes.SETTINGS) {

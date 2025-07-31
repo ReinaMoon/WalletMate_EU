@@ -1,8 +1,13 @@
 package com.yourdomain.walletmateeu.ui.feature_settings
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -14,23 +19,30 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.yourdomain.walletmateeu.R
 import com.yourdomain.walletmateeu.data.local.model.TagEntity
+import com.yourdomain.walletmateeu.util.DummyData
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TagSettingsScreen(
     viewModel: TagSettingsViewModel = hiltViewModel(),
-    onNavigateBack: () -> Unit // <<--- 1. 파라미터 추가
+    onNavigateBack: () -> Unit
 ) {
     val tags by viewModel.tags.collectAsState()
     val newTagName = viewModel.newTagName
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
+
     val tagToEdit = viewModel.tagToEdit
     val tagToDelete = viewModel.tagToDelete
 
@@ -51,13 +63,17 @@ fun TagSettingsScreen(
     if (tagToDelete != null) {
         AlertDialog(
             onDismissRequest = { viewModel.onDismissDeleteDialog() },
-            title = { Text("Delete Tag") },
-            text = { Text("Are you sure you want to delete the tag '#${tagToDelete.name}'?") },
+            title = { Text(stringResource(R.string.tag_settings_delete_dialog_title)) },
+            text = { Text(stringResource(R.string.tag_settings_delete_dialog_message, tagToDelete.name)) },
             confirmButton = {
-                Button(onClick = { viewModel.onConfirmDelete() }, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) { Text("Delete") }
+                Button(onClick = { viewModel.onConfirmDelete() }, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) {
+                    Text(stringResource(R.string.dialog_delete))
+                }
             },
             dismissButton = {
-                TextButton(onClick = { viewModel.onDismissDeleteDialog() }) { Text("Cancel") }
+                TextButton(onClick = { viewModel.onDismissDeleteDialog() }) {
+                    Text(stringResource(R.string.dialog_cancel))
+                }
             }
         )
     }
@@ -65,55 +81,85 @@ fun TagSettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Manage Tags") },
-                // <<--- 2. 뒤로가기 아이콘 추가 ---
+                title = { Text(stringResource(R.string.tag_settings_title)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(imageVector = Icons.Default.ArrowBack, contentDescription = stringResource(R.string.back_button_desc))
                     }
                 }
+
             )
         }
     ) { paddingValues ->
         Column(
-            modifier = Modifier.fillMaxSize().padding(paddingValues).padding(16.dp)
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(16.dp)
         ) {
-            LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            LazyColumn(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 items(tags, key = { it.id }) { tag ->
-                    TagItem(tag = tag, onEditClick = { viewModel.onEditClick(tag) }, onDeleteClick = { viewModel.onDeleteClick(tag) })
+                    TagItem(
+                        tag = tag,
+                        onEditClick = { viewModel.onEditClick(tag) },
+                        onDeleteClick = { viewModel.onDeleteClick(tag) }
+                    )
                 }
             }
+
             Spacer(modifier = Modifier.height(16.dp))
-            OutlinedTextField(
-                value = newTagName,
-                onValueChange = viewModel::onNewTagNameChange,
-                label = { Text("New tag name (e.g. summer_trip)") },
-                modifier = Modifier.fillMaxWidth(),
-                trailingIcon = {
-                    IconButton(
-                        onClick = {
+
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(stringResource(R.string.category_settings_add_new), style = MaterialTheme.typography.titleMedium)
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(DummyData.categoryColors) { color ->
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(color)
+                                .clickable { viewModel.onColorSelected(color) }
+                                .border(
+                                    width = 2.dp,
+                                    color = if (viewModel.selectedColor.toArgb() == color.toArgb()) MaterialTheme.colorScheme.onSurface else Color.Transparent,
+                                    shape = CircleShape
+                                )
+                        )
+                    }
+                }
+                OutlinedTextField(
+                    value = newTagName,
+                    onValueChange = { viewModel.onNewTagNameChange(it) },
+                    label = { Text(stringResource(R.string.tag_settings_add_new)) },
+                    modifier = Modifier.fillMaxWidth(),
+                    trailingIcon = {
+                        IconButton(
+                            onClick = {
+                                viewModel.onAddTag()
+                                keyboardController?.hide()
+                                focusManager.clearFocus()
+                            },
+                            enabled = newTagName.isNotBlank()
+                        ) { Icon(Icons.Default.Add, contentDescription = "Add tag") }
+                    },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = {
+                        if (newTagName.isNotBlank()) {
                             viewModel.onAddTag()
                             keyboardController?.hide()
                             focusManager.clearFocus()
-                        },
-                        enabled = newTagName.isNotBlank()
-                    ) { Icon(Icons.Default.Add, contentDescription = "Add tag") }
-                },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = {
-                    if (newTagName.isNotBlank()) {
-                        viewModel.onAddTag()
-                        keyboardController?.hide()
-                        focusManager.clearFocus()
-                    }
-                })
-            )
+                        }
+                    })
+                )
+            }
         }
     }
 }
 
-// 아래의 다른 Composable들은 변경 없습니다.
 @Composable
 fun TagItem(
     tag: TagEntity,
@@ -121,11 +167,16 @@ fun TagItem(
     onDeleteClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val tagColor = try { Color(android.graphics.Color.parseColor(tag.color)) } catch (e: Exception) { MaterialTheme.colorScheme.secondaryContainer }
     Card(modifier = modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            Box(modifier = Modifier
+                .size(12.dp)
+                .clip(CircleShape)
+                .background(tagColor))
             Text(
                 text = "#${tag.name}",
                 style = MaterialTheme.typography.bodyLarge,
@@ -161,12 +212,12 @@ fun EditTagDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Edit Tag '#$originalTagName'") },
+        title = { Text(stringResource(R.string.tag_settings_edit_title, originalTagName)) },
         text = {
             OutlinedTextField(
                 value = editedTagName,
                 onValueChange = onNameChange,
-                label = { Text("New tag name") },
+                label = { Text(stringResource(R.string.tag_settings_new_name_label)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
@@ -176,12 +227,12 @@ fun EditTagDialog(
                 onClick = onConfirm,
                 enabled = editedTagName.isNotBlank() && editedTagName != originalTagName
             ) {
-                Text("Save")
+                Text(stringResource(R.string.transaction_save))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.dialog_cancel))
             }
         }
     )
