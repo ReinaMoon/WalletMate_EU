@@ -3,6 +3,7 @@ package com.yourdomain.walletmateeu.di
 import android.content.Context
 import androidx.room.Room
 import com.yourdomain.walletmateeu.data.local.AppDatabase
+import com.yourdomain.walletmateeu.data.local.MIGRATION_3_4
 import com.yourdomain.walletmateeu.data.repository.UserPreferencesRepository
 import dagger.Module
 import dagger.Provides
@@ -22,9 +23,10 @@ object AppModule {
             context,
             AppDatabase::class.java,
             "walletmate_db"
-        ).build()
+        )
+            .addMigrations(MIGRATION_3_4) // <<--- 이 줄을 추가하세요
+            .build()
     }
-
     @Provides
     @Singleton
     fun provideTransactionDao(db: AppDatabase) = db.transactionDao()

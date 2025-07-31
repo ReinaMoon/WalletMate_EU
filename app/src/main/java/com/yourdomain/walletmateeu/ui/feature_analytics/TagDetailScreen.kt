@@ -1,18 +1,27 @@
 package com.yourdomain.walletmateeu.ui.feature_analytics
 
+import android.net.Uri
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
+import coil.compose.rememberAsyncImagePainter
+import com.yourdomain.walletmateeu.R
 import com.yourdomain.walletmateeu.ui.feature_dashboard.TransactionItem
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -22,6 +31,20 @@ fun TagDetailScreen(
     onNavigateBack: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
+
+    if (selectedImageUri != null) {
+        Dialog(onDismissRequest = { selectedImageUri = null }) {
+            Image(
+                painter = rememberAsyncImagePainter(model = selectedImageUri),
+                contentDescription = "Receipt Full Screen",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp)),
+                contentScale = ContentScale.Fit
+            )
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -29,7 +52,7 @@ fun TagDetailScreen(
                 title = { Text("#${uiState.tagName}") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.back_button_desc))
                     }
                 }
             )
@@ -42,7 +65,7 @@ fun TagDetailScreen(
         ) {
             item {
                 Text(
-                    text = String.format("Total: %.2f EUR", uiState.totalAmount),
+                    text = stringResource(R.string.tag_detail_total) + String.format(": %.2f %s", uiState.totalAmount, uiState.currency),
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold
                 )
@@ -50,8 +73,12 @@ fun TagDetailScreen(
             items(uiState.transactions, key = { it.transaction.id }) { transaction ->
                 TransactionItem(
                     transactionWithCategoryAndTags = transaction,
-                    currency = uiState.currency, // currency 전달
-                    onClick = { /* 상세 화면에서는 클릭 비활성화 */ }
+                    currency = uiState.currency,
+                    onClick = {
+                        transaction.transaction.imageUri?.let {
+                            selectedImageUri = Uri.parse(it)
+                        }
+                    }
                 )
             }
         }

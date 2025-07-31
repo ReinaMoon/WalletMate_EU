@@ -22,5 +22,6 @@ data class TransactionEntity(
     val type: String,
     val date: Long,
     val categoryId: String?,
-    val lastModified: Long
+    val lastModified: Long,
+    val imageUri: String? = null
 )

@@ -24,6 +24,7 @@ object Routes {
     const val TAG_SETTINGS = "tag_settings"
     const val ICON_PICKER = "icon_picker"
     const val TAG_DETAIL = "tag_detail"
+    const val TRANSACTION_DETAIL = "transaction_detail"
 }
 
 @Composable
@@ -35,7 +36,11 @@ fun AppNavigation(navController: NavHostController, paddingValues: PaddingValues
     ) {
         composable(Routes.DASHBOARD) {
             DashboardScreen(
-                onNavigateToAddTransaction = { navController.navigate(Routes.ADD_EDIT_TRANSACTION) }
+                onNavigateToAddTransaction = { navController.navigate(Routes.ADD_EDIT_TRANSACTION) },
+                // <<--- 거래 상세 화면으로 이동하는 콜백 추가 ---
+                onNavigateToTransactionDetail = { transactionId ->
+                    navController.navigate("${Routes.TRANSACTION_DETAIL}/$transactionId")
+                }
             )
         }
         composable(Routes.ANALYTICS) {
@@ -58,6 +63,12 @@ fun AppNavigation(navController: NavHostController, paddingValues: PaddingValues
             )
         }
 
+        composable(
+            route = "${Routes.TRANSACTION_DETAIL}/{transactionId}",
+            arguments = listOf(navArgument("transactionId") { type = NavType.StringType })
+        ) {
+
+        }
 
         composable(Routes.SETTINGS) {
             SettingsScreen(

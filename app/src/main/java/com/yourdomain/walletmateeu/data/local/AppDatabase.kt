@@ -16,7 +16,7 @@ import com.yourdomain.walletmateeu.data.local.model.*
         TagEntity::class,
         TransactionTagCrossRef::class
     ],
-    version = 3, // <<--- 버전을 2에서 3으로 올립니다!
+    version = 4,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -40,5 +40,12 @@ val MIGRATION_2_3 = object : Migration(2, 3) {
         database.execSQL("INSERT INTO transactions_new (id, title, amount, type, date, categoryId, lastModified) SELECT id, title, amount, type, date, categoryId, lastModified FROM transactions")
         database.execSQL("DROP TABLE transactions")
         database.execSQL("ALTER TABLE transactions_new RENAME TO transactions")
+    }
+}
+
+// <<--- 마이그레이션 객체 추가 ---
+val MIGRATION_3_4 = object : Migration(3, 4) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE transactions ADD COLUMN imageUri TEXT")
     }
 }

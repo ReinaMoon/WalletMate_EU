@@ -1,5 +1,6 @@
 package com.yourdomain.walletmateeu.ui.feature_timeline
 
+import android.net.Uri
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -12,7 +13,11 @@ import com.yourdomain.walletmateeu.data.local.model.TransactionEntity
 import com.yourdomain.walletmateeu.data.repository.AppRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.util.*
 import javax.inject.Inject
@@ -26,7 +31,8 @@ data class AddEditTransactionUiState(
     val isDatePickerDialogVisible: Boolean = false,
     val isEditMode: Boolean = false,
     val isSaving: Boolean = false,
-    val selectedTags: List<TagEntity> = emptyList()
+    val selectedTags: List<TagEntity> = emptyList(),
+    val imageUri: Uri? = null
 )
 
 sealed class AddEditTransactionEvent {
@@ -38,6 +44,8 @@ sealed class AddEditTransactionEvent {
     data class OnDateSelected(val date: Long) : AddEditTransactionEvent()
     object OnDatePickerDismiss : AddEditTransactionEvent()
     data class OnTagSelected(val tag: TagEntity) : AddEditTransactionEvent()
+    data class OnImagePicked(val uri: Uri?) : AddEditTransactionEvent()
+    object OnRemoveImage : AddEditTransactionEvent()
     object OnSaveClick : AddEditTransactionEvent()
 }
 
@@ -89,6 +97,7 @@ class AddEditTransactionViewModel @Inject constructor(
                     selectedCategory = category,
                     date = transaction.date,
                     selectedTags = transactionWithTags.tags,
+                    imageUri = transaction.imageUri?.let { Uri.parse(it) },
                     isEditMode = true
                 )
             }
@@ -121,16 +130,24 @@ class AddEditTransactionViewModel @Inject constructor(
                 }
                 uiState = uiState.copy(selectedTags = currentTags)
             }
+            // --- 이 부분이 추가되었습니다 ---
+            is AddEditTransactionEvent.OnImagePicked -> {
+                uiState = uiState.copy(imageUri = event.uri)
+            }
+            is AddEditTransactionEvent.OnRemoveImage -> {
+                uiState = uiState.copy(imageUri = null)
+            }
+            // --- 여기까지 추가 ---
             is AddEditTransactionEvent.OnSaveClick -> saveTransaction()
         }
     }
 
     private fun saveTransaction() {
         if (uiState.isSaving || uiState.title.isBlank() || uiState.amount.isBlank()) return
-
         uiState = uiState.copy(isSaving = true)
 
         viewModelScope.launch {
+            // --- 이 부분이 수정되었습니다 ---
             val amountValue = uiState.amount.toDoubleOrNull() ?: 0.0
 
             if (uiState.isEditMode) {
@@ -141,6 +158,7 @@ class AddEditTransactionViewModel @Inject constructor(
                         type = uiState.transactionType,
                         categoryId = uiState.selectedCategory?.id,
                         date = uiState.date,
+                        imageUri = uiState.imageUri?.toString(),
                         lastModified = System.currentTimeMillis()
                     )
                     repository.updateTransaction(updatedTransaction, uiState.selectedTags)
@@ -153,6 +171,7 @@ class AddEditTransactionViewModel @Inject constructor(
                     type = uiState.transactionType,
                     date = uiState.date,
                     categoryId = uiState.selectedCategory?.id,
+                    imageUri = uiState.imageUri?.toString(),
                     lastModified = System.currentTimeMillis()
                 )
                 repository.insertTransaction(newTransaction, uiState.selectedTags)

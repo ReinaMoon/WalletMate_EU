@@ -83,4 +83,10 @@
 
     <string name="date_filter_custom">Custom Range...</string>
     <string name="income_vs_expense_title">%s: Income vs Expense</string>
+
+    <string name="receipt_label">Receipt</string>
+    <string name="receipt_image_desc">Receipt Image</string>
+    <string name="remove_image_desc">Remove Image</string>
+    <string name="gallery_button">Gallery</string>
+    <string name="camera_button">Camera</string>
 </resources>

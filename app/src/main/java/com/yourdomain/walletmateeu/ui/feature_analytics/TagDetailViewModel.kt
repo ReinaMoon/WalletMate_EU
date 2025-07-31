@@ -5,17 +5,17 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.yourdomain.walletmateeu.data.local.model.TransactionWithCategoryAndTags
 import com.yourdomain.walletmateeu.data.repository.AppRepository
+import com.yourdomain.walletmateeu.data.repository.UserPreferencesRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import java.net.URLDecoder
 import javax.inject.Inject
-import com.yourdomain.walletmateeu.data.repository.UserPreferencesRepository
 
 data class TagDetailUiState(
     val tagName: String = "",
     val transactions: List<TransactionWithCategoryAndTags> = emptyList(),
     val totalAmount: Double = 0.0,
-    val currency: String = "EUR" // currency 필드 추가
+    val currency: String = "EUR" // 통화 상태 추가
 )
 
 @HiltViewModel

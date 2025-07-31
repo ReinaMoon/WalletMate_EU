@@ -11,7 +11,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.yourdomain.walletmateeu.R
 import com.yourdomain.walletmateeu.data.local.model.CategoryEntity
 import com.yourdomain.walletmateeu.util.IconHelper
 
@@ -31,10 +33,11 @@ fun CategoryDropDown(
         modifier = modifier
     ) {
         OutlinedTextField(
-            value = selectedCategory?.name ?: "Select Category",
+            value = selectedCategory?.name ?: "", // <<--- ""으로 변경하여 null 오류 방지
             onValueChange = {},
             readOnly = true,
-            label = { Text("Category") },
+            label = { Text(stringResource(R.string.transaction_category_label)) },
+            placeholder = { Text(stringResource(R.string.transaction_uncategorized)) },
             leadingIcon = if (selectedCategory != null) {
                 {
                     val categoryColor = try { Color(android.graphics.Color.parseColor(selectedCategory.color)) } catch (e: Exception) { Color.Gray }

@@ -82,4 +82,10 @@
     <string name="back_button_desc">뒤로가기</string>
     <string name="date_filter_custom">기간 직접 설정...</string>
     <string name="income_vs_expense_title">%s: 수입 vs 지출</string>
+
+    <string name="receipt_label">Receipt</string>
+    <string name="receipt_image_desc">Receipt Image</string>
+    <string name="remove_image_desc">Remove Image</string>
+    <string name="gallery_button">Gallery</string>
+    <string name="camera_button">Camera</string>
 </resources>
