@@ -18,11 +18,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.github.mikephil.charting.data.LineData
 import com.github.mikephil.charting.data.PieData
+import com.yourdomain.walletmateeu.R
 import com.yourdomain.walletmateeu.ui.components.LineChartComposable
 import com.yourdomain.walletmateeu.ui.components.PieChartComposable
 import com.yourdomain.walletmateeu.ui.feature_dashboard.DateFilterType
@@ -37,11 +39,10 @@ fun AnalyticsScreen(
     onNavigateToTagDetail: (tagId: String, tagName: String) -> Unit,
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val tabTitles = listOf("By Category", "By Tag")
+    val tabTitles = listOf(stringResource(R.string.analytics_by_category), stringResource(R.string.analytics_by_tag))
     val pagerState = rememberPagerState(pageCount = { tabTitles.size })
     val scope = rememberCoroutineScope()
     val bottomSheetState = rememberModalBottomSheetState()
-
     // ViewModel의 탭 상태와 UI의 탭 상태를 동기화
     LaunchedEffect(pagerState.currentPage) {
         viewModel.onTabSelected(pagerState.currentPage)
@@ -89,11 +90,11 @@ fun AnalyticsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Analytics") },
+                title = { Text(stringResource(R.string.analytics_title)) },
                 actions = {
                     OutlinedButton(onClick = { viewModel.showFilterBottomSheet(true) }) {
                         Text(uiState.dateFilter.displayName)
-                        Icon(Icons.Default.ArrowDropDown, contentDescription = "Select Period")
+                        Icon(Icons.Default.ArrowDropDown, contentDescription = stringResource(R.string.analytics_select_period))
                     }
                     Spacer(modifier = Modifier.width(16.dp))
                 }
@@ -105,18 +106,12 @@ fun AnalyticsScreen(
                 tabTitles.forEachIndexed { index, title ->
                     Tab(
                         selected = pagerState.currentPage == index,
-                        onClick = {
-                            viewModel.onTabSelected(index)
-                            scope.launch { pagerState.animateScrollToPage(index) }
-                        },
+                        onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
                         text = { Text(title) }
                     )
                 }
             }
-            HorizontalPager(
-                state = pagerState,
-                modifier = Modifier.fillMaxSize()
-            ) { page ->
+            HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
                 when (page) {
                     0 -> CategoryAnalysisPage(uiState)
                     1 -> TagAnalysisPage(uiState, onNavigateToTagDetail)
@@ -126,6 +121,7 @@ fun AnalyticsScreen(
     }
 }
 
+
 @Composable
 fun CategoryAnalysisPage(uiState: AnalyticsUiState) {
     LazyColumn(
@@ -133,32 +129,27 @@ fun CategoryAnalysisPage(uiState: AnalyticsUiState) {
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        item { SummaryCard(totalIncome = uiState.totalIncome, totalExpense = uiState.totalExpense) }
+        item { SummaryCard(totalIncome = uiState.totalIncome, totalExpense = uiState.totalExpense, currency = uiState.currency) }
         item { TrendChartCard(lineData = uiState.trendChartData) }
         item { ExpenseChartCard(pieData = uiState.expensePieData) }
         item { IncomeChartCard(pieData = uiState.incomePieData) }
     }
 }
 
+
 @Composable
-fun TagAnalysisPage(
-    uiState: AnalyticsUiState,
-    onNavigateToTagDetail: (tagId: String, tagName: String) -> Unit
-) {
+fun TagAnalysisPage(uiState: AnalyticsUiState, onNavigateToTagDetail: (tagId: String, tagName: String) -> Unit) {
     if (uiState.tagAnalysisList.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize().padding(16.dp), contentAlignment = Alignment.Center) {
-            Text("No transactions with tags in this period.")
+            Text(stringResource(R.string.analytics_no_tag_data_period))
         }
         return
     }
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
+    LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         items(uiState.tagAnalysisList, key = { it.tag.id }) { tagAnalysis ->
             TagAnalysisItem(
                 tagAnalysis = tagAnalysis,
+                currency = uiState.currency,
                 onClick = {
                     val encodedTagName = URLEncoder.encode(tagAnalysis.tag.name, "UTF-8")
                     onNavigateToTagDetail(tagAnalysis.tag.id, encodedTagName)
@@ -169,25 +160,39 @@ fun TagAnalysisPage(
 }
 
 @Composable
-fun TagAnalysisItem(tagAnalysis: TagAnalysis, onClick: () -> Unit) {
-    Card(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)) {
+fun TagAnalysisItem(tagAnalysis: TagAnalysis, currency: String, onClick: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        ){        // <<--- 흰색 배경 추가
         Row(
             modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Column {
                 Text("#${tagAnalysis.tag.name}", style = MaterialTheme.typography.titleMedium)
-                Text("${tagAnalysis.transactionCount} transactions", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    stringResource(R.string.tag_detail_transactions_count, tagAnalysis.transactionCount),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
-            Text(String.format("%.2f EUR", tagAnalysis.totalAmount), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+            Spacer(modifier = Modifier.weight(1f)) // 이 Spacer가 금액을 오른쪽으로 밀어냅니다.
+            Text(
+                String.format("%.2f %s", tagAnalysis.totalAmount, currency),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold
+            )
         }
     }
 }
 
 @Composable
-fun SummaryCard(totalIncome: Double, totalExpense: Double) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+fun SummaryCard(totalIncome: Double, totalExpense: Double, currency: String) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface) // <<--- 흰색 배경 추가
+    ) {
         Row(
             modifier = Modifier.padding(16.dp).fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -195,11 +200,21 @@ fun SummaryCard(totalIncome: Double, totalExpense: Double) {
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("Income", style = MaterialTheme.typography.titleMedium)
-                Text(String.format("%.2f EUR", totalIncome), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                Text(
+                    String.format("%.2f %s", totalIncome, currency), // %s로 통화 기호 추가
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
             }
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("Expense", style = MaterialTheme.typography.titleMedium)
-                Text(String.format("%.2f EUR", totalExpense), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
+                Text(
+                    String.format("%.2f %s", totalExpense, currency), // %s로 통화 기호 추가
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.error
+                )
             }
         }
     }
@@ -207,7 +222,10 @@ fun SummaryCard(totalIncome: Double, totalExpense: Double) {
 
 @Composable
 fun TrendChartCard(lineData: LineData?) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface) // <<--- 흰색 배경 추가
+    ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text("Income vs Expense Trend", style = MaterialTheme.typography.titleLarge)
             Spacer(modifier = Modifier.height(16.dp))
@@ -224,8 +242,11 @@ fun TrendChartCard(lineData: LineData?) {
 
 @Composable
 fun ExpenseChartCard(pieData: PieData?) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp)) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface) // <<--- 흰색 배경 추가
+    ) {
+    Column(modifier = Modifier.padding(16.dp)) {
             Text("Expenses by Category", style = MaterialTheme.typography.titleLarge)
             Spacer(modifier = Modifier.height(16.dp))
             if (pieData != null && pieData.entryCount > 0) {
@@ -241,7 +262,10 @@ fun ExpenseChartCard(pieData: PieData?) {
 
 @Composable
 fun IncomeChartCard(pieData: PieData?) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface) // <<--- 흰색 배경 추가
+    ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text("Income by Category", style = MaterialTheme.typography.titleLarge)
             Spacer(modifier = Modifier.height(16.dp))

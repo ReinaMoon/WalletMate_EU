@@ -1,3 +1,86 @@
 <resources>
     <string name="app_name">WalletMate EU</string>
+
+    <!-- Bottom Navigation -->
+    <string name="bottom_nav_dashboard">Dashboard</string>
+    <string name="bottom_nav_analytics">Analytics</string>
+    <string name="bottom_nav_settings">Settings</string>
+
+    <!-- Dashboard Screen -->
+    <string name="dashboard_balance">Balance</string>
+    <string name="dashboard_income">Income</string>
+    <string name="dashboard_expense">Expense</string>
+    <string name="dashboard_monthly_expenses">This Month\'s Expenses</string>
+    <string name="dashboard_no_expense_data">No expense data for this month.</string>
+    <string name="dashboard_transactions">Transactions</string>
+    <string name="dashboard_filter_all">All</string>
+    <string name="dashboard_no_transactions_period">No transactions in this period.</string>
+    <string name="dashboard_no_data">No data for this period.</string>
+
+    <!-- Analytics Screen -->
+    <string name="analytics_title">Analytics</string>
+    <string name="analytics_select_period">Select Period</string>
+    <string name="analytics_by_category">By Category</string>
+    <string name="analytics_by_tag">By Tag</string>
+    <string name="analytics_trend">Income vs Expense Trend</string>
+    <string name="analytics_no_trend_data">Not enough data to show trend.</string>
+    <string name="analytics_expenses_by_category">Expenses by Category</string>
+    <string name="analytics_no_expense_data_period">No expense data for this period.</string>
+    <string name="analytics_incomes_by_category">Income by Category</string>
+    <string name="analytics_no_income_data_period">No income data for this period.</string>
+    <string name="analytics_no_tag_data_period">No transactions with tags in this period.</string>
+    <string name="tag_detail_total">Total</string>
+    <string name="tag_detail_transactions_count">%d transactions</string>
+
+    <!-- Settings Screen -->
+    <string name="settings_manage_categories">Manage Categories</string>
+    <string name="settings_manage_tags">Manage Tags</string>
+    <string name="settings_currency">Currency</string>
+    <string name="settings_select_currency">Select Currency</string>
+    <string name="settings_reset_all_data">Reset All Data</string>
+    <string name="settings_clear_data_dialog_title">Clear All Data</string>
+    <string name="settings_clear_data_dialog_message">This will permanently delete all transactions, categories, and tags. Are you sure?</string>
+    <string name="settings_delete_all">Delete All</string>
+
+    <!-- Add/Edit Transaction -->
+    <string name="add_transaction_title">Add Transaction</string>
+    <string name="edit_transaction_title">Edit Transaction</string>
+    <string name="transaction_expense_type">Expense</string>
+    <string name="transaction_income_type">Income</string>
+    <string name="transaction_title_label">Title</string>
+    <string name="transaction_amount_label">Amount</string>
+    <string name="transaction_date_label">Date</string>
+    <string name="transaction_category_label">Category</string>
+    <string name="transaction_uncategorized">Uncategorized</string>
+    <string name="transaction_tags_label">Tags</string>
+    <string name="transaction_save">Save</string>
+
+    <!-- Category/Tag Settings -->
+    <string name="category_settings_title">Manage Categories</string>
+    <string name="category_settings_add_new">Add New Category</string>
+    <string name="category_settings_icon">Icon</string>
+    <string name="category_settings_change_icon">Change</string>
+    <string name="category_settings_color">Color</string>
+    <string name="category_settings_hex_code">Hex Code</string>
+    <string name="category_settings_pick_color">Pick</string>
+    <string name="category_settings_name_label">Category name</string>
+    <string name="tag_settings_title">Manage Tags</string>
+    <string name="tag_settings_add_new">New tag name (e.g. summer_trip)</string>
+    <string name="tag_settings_edit_title">Edit Tag \'#%s\'</string>
+    <string name="tag_settings_new_name_label">New tag name</string>
+    <string name="tag_settings_delete_dialog_title">Delete Tag</string>
+    <string name="tag_settings_delete_dialog_message">Are you sure you want to delete the tag \'#%s\'?</string>
+
+    <!-- Icon Picker -->
+    <string name="icon_picker_title">Select an Icon</string>
+    <string name="icon_picker_search">Search icons</string>
+
+    <!-- General -->
+    <string name="dialog_ok">OK</string>
+    <string name="dialog_cancel">Cancel</string>
+    <string name="dialog_delete">Delete</string>
+    <string name="back_button_desc">Back</string>
+
+    <string name="date_filter_custom">Custom Range...</string>
+    <string name="income_vs_expense_title">%s: Income vs Expense</string>
 </resources>

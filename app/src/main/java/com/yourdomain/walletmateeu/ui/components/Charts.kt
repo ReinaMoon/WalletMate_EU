@@ -9,6 +9,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import com.github.mikephil.charting.charts.LineChart
 import com.github.mikephil.charting.charts.PieChart
 import com.github.mikephil.charting.components.XAxis
+import com.github.mikephil.charting.data.BarData
 import com.github.mikephil.charting.data.LineData
 import com.github.mikephil.charting.data.PieData
 import com.github.mikephil.charting.formatter.PercentFormatter
@@ -69,6 +70,52 @@ fun LineChartComposable(lineData: LineData, modifier: Modifier = Modifier) {
                     return format.format(Date(value.toLong()))
                 }
             }
+            chart.invalidate()
+        },
+        modifier = modifier
+    )
+}
+
+// ... PieChartComposable 함수 ...
+
+@Composable
+fun HorizontalBarChartComposable(
+    barData: BarData,
+    labels: List<String>,
+    modifier: Modifier = Modifier
+) {
+    AndroidView(
+        factory = { context ->
+            com.github.mikephil.charting.charts.HorizontalBarChart(context).apply {
+                description.isEnabled = false
+                setDrawGridBackground(false)
+                setDrawValueAboveBar(true)
+                legend.isEnabled = false
+                xAxis.apply {
+                    position = com.github.mikephil.charting.components.XAxis.XAxisPosition.BOTTOM
+                    setDrawGridLines(false)
+                    setDrawAxisLine(false)
+                    granularity = 1f
+                    valueFormatter = object : com.github.mikephil.charting.formatter.ValueFormatter() {
+                        override fun getFormattedValue(value: Float): String {
+                            return labels.getOrNull(value.toInt()) ?: ""
+                        }
+                    }
+                }
+                axisLeft.apply {
+                    setDrawGridLines(false)
+                    setDrawAxisLine(true)
+                    axisMinimum = 0f
+                }
+                axisRight.isEnabled = false
+                setTouchEnabled(false) // 터치 비활성화
+            }
+        },
+        update = { chart ->
+            chart.data = barData.apply {
+                setValueTextSize(12f)
+            }
+            chart.animateY(1000)
             chart.invalidate()
         },
         modifier = modifier

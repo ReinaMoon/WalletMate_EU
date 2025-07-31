@@ -1,6 +1,5 @@
 package com.yourdomain.walletmateeu.ui.feature_dashboard
 
-import android.graphics.Typeface
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -10,29 +9,33 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Category
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.github.mikephil.charting.charts.PieChart
-import com.github.mikephil.charting.data.PieData
-import com.github.mikephil.charting.formatter.PercentFormatter
+import com.github.mikephil.charting.data.BarData
 import com.google.accompanist.flowlayout.FlowRow
+import com.yourdomain.walletmateeu.R
 import com.yourdomain.walletmateeu.data.local.model.TransactionWithCategoryAndTags
 import com.yourdomain.walletmateeu.ui.components.EditTransactionDialog
+import com.yourdomain.walletmateeu.ui.components.HorizontalBarChartComposable
 import com.yourdomain.walletmateeu.util.IconHelper
-import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun DashboardScreen(
@@ -42,33 +45,25 @@ fun DashboardScreen(
     val uiState by viewModel.uiState.collectAsState()
     val bottomSheetState = rememberModalBottomSheetState()
 
-    // --- 필터 메뉴(Bottom Sheet) ---
     if (uiState.isBottomSheetVisible) {
-        ModalBottomSheet(
-            onDismissRequest = { viewModel.showFilterBottomSheet(false) },
-            sheetState = bottomSheetState
-        ) {
+        ModalBottomSheet(onDismissRequest = { viewModel.showFilterBottomSheet(false) }, sheetState = bottomSheetState) {
             Column(modifier = Modifier.padding(bottom = 32.dp)) {
-                Text("Select Period", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(16.dp))
-                DateFilterType.values().forEach { filterType ->
-                    if (filterType != DateFilterType.CUSTOM) {
-                        ListItem(
-                            headlineContent = { Text(filterType.displayName) },
-                            modifier = Modifier.clickable { viewModel.onDateFilterChanged(filterType) }
-                        )
-                    }
+                Text(stringResource(R.string.analytics_select_period), style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(16.dp))
+                DateFilterType.values().filter { it != DateFilterType.CUSTOM }.forEach { filterType ->
+                    ListItem(
+                        headlineContent = { Text(filterType.displayName) },
+                        modifier = Modifier.clickable { viewModel.onDateFilterChanged(filterType) }
+                    )
                 }
                 HorizontalDivider()
                 ListItem(
-                    headlineContent = { Text("Custom Range...") },
-                    leadingContent = { Icon(Icons.Default.DateRange, contentDescription = null) },
+                    headlineContent = { Text(stringResource(id = R.string.date_filter_custom)) },
+                    leadingContent = { Icon(Icons.Default.DateRange, null) },
                     modifier = Modifier.clickable { viewModel.onDateFilterChanged(DateFilterType.CUSTOM) }
                 )
             }
         }
     }
-
-    // --- 날짜 범위 선택기(Date Range Picker) ---
     if (uiState.isDateRangePickerVisible) {
         val datePickerState = rememberDateRangePickerState(
             initialSelectedStartDateMillis = if(uiState.dateFilter == DateFilterType.CUSTOM) uiState.startDate else null,
@@ -79,29 +74,19 @@ fun DashboardScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        val start = datePickerState.selectedStartDateMillis
-                        val end = datePickerState.selectedEndDateMillis
+                        val start = datePickerState.selectedStartDateMillis; val end = datePickerState.selectedEndDateMillis
                         if (start != null && end != null) {
-                            // 종료일은 23:59:59로 설정하여 하루 전체를 포함하도록 함
-                            val correctedEnd = Calendar.getInstance().apply {
-                                timeInMillis = end
-                                set(Calendar.HOUR_OF_DAY, 23)
-                                set(Calendar.MINUTE, 59)
-                                set(Calendar.SECOND, 59)
-                            }.timeInMillis
+                            val correctedEnd = Calendar.getInstance().apply { timeInMillis = end; set(Calendar.HOUR_OF_DAY, 23); set(Calendar.MINUTE, 59); set(Calendar.SECOND, 59) }.timeInMillis
                             viewModel.onCustomDateRangeSelected(start, correctedEnd)
                         }
                     },
                     enabled = datePickerState.selectedEndDateMillis != null
-                ) { Text("OK") }
+                ) { Text(stringResource(R.string.dialog_ok)) }
             },
-            dismissButton = { TextButton(onClick = { viewModel.showDateRangePicker(false) }) { Text("Cancel") } }
-        ) {
-            DateRangePicker(state = datePickerState, modifier = Modifier.heightIn(max = 500.dp))
-        }
+            dismissButton = { TextButton(onClick = { viewModel.showDateRangePicker(false) }) { Text(stringResource(R.string.dialog_cancel)) } }
+        ) { DateRangePicker(state = datePickerState, modifier = Modifier.heightIn(max = 500.dp)) }
     }
 
-    // --- 수정 다이얼로그 ---
     if (uiState.isEditDialogOpen && uiState.transactionToEdit != null) {
         EditTransactionDialog(
             transactionWithCategoryAndTags = uiState.transactionToEdit!!,
@@ -116,7 +101,7 @@ fun DashboardScreen(
     Scaffold(
         floatingActionButton = {
             FloatingActionButton(onClick = onNavigateToAddTransaction) {
-                Icon(Icons.Default.Add, "Add Transaction")
+                Icon(Icons.Default.Add, stringResource(R.string.add_transaction_title))
             }
         }
     ) { paddingValues ->
@@ -125,41 +110,56 @@ fun DashboardScreen(
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            item { BalanceCard(balance = uiState.balance, totalIncome = uiState.totalIncome, totalExpense = uiState.totalExpense) }
-            item { ExpensesChartCard(pieData = uiState.pieChartData) }
+            item {
+                BalanceCard(
+                    balance = uiState.balance,
+                    totalIncome = uiState.totalIncome,
+                    totalExpense = uiState.totalExpense,
+                    currency = uiState.currency
+                )
+            }
+            item {
+                IncomeExpenseProgressBarCard(
+                    totalIncome = uiState.totalIncome,
+                    totalExpense = uiState.totalExpense,
+                    currency = uiState.currency,
+                    dateFilterName = uiState.dateFilter.displayName
+                )
+            }
 
             stickyHeader {
-                Column(modifier = Modifier.background(MaterialTheme.colorScheme.surface)) {
+                // --- 이 Column의 modifier가 수정되었습니다 ---
+                Column(
+                    modifier = Modifier
+                        .background(MaterialTheme.colorScheme.surface)
+                        .padding(horizontal = 8.dp, vertical = 8.dp) // 여백 추가
+                        .clip(RoundedCornerShape(12.dp)) // 모서리를 둥글게
+                ) {
                     Row(
-                        modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                        modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Transactions", style = MaterialTheme.typography.titleLarge)
+                        Text(
+                            text = stringResource(R.string.dashboard_transactions),
+                            style = MaterialTheme.typography.titleLarge,
+                            modifier = Modifier.padding(start = 8.dp) // 왼쪽 여백
+                        )
                         Spacer(Modifier.weight(1f))
-                        OutlinedButton(onClick = { viewModel.showFilterBottomSheet(true) }) {
+                        OutlinedButton(
+                            onClick = { viewModel.showFilterBottomSheet(true) },
+                            modifier = Modifier.padding(end = 8.dp) // 오른쪽 여백
+                        ) {
                             Text(uiState.dateFilter.displayName)
-                            Icon(Icons.Default.ArrowDropDown, contentDescription = "Select date range")
+                            Icon(Icons.Default.ArrowDropDown, contentDescription = stringResource(R.string.analytics_select_period))
                         }
                     }
-
-                    val filters = listOf("All", "Income", "Expense")
-                    val selectedTabIndex = when (uiState.transactionFilter) {
-                        "INCOME" -> 1
-                        "EXPENSE" -> 2
-                        else -> 0
-                    }
+                    val filters = listOf(stringResource(R.string.dashboard_filter_all), stringResource(R.string.dashboard_income), stringResource(R.string.dashboard_expense))
+                    val selectedTabIndex = when (uiState.transactionFilter) { "INCOME" -> 1; "EXPENSE" -> 2; else -> 0 }
                     TabRow(selectedTabIndex = selectedTabIndex, modifier = Modifier.padding(top = 8.dp)) {
                         filters.forEachIndexed { index, title ->
                             Tab(
                                 selected = selectedTabIndex == index,
-                                onClick = {
-                                    val newFilter = when (index) {
-                                        1 -> "INCOME"
-                                        2 -> "EXPENSE"
-                                        else -> "ALL"
-                                    }
-                                    viewModel.onTransactionFilterChanged(newFilter)
-                                },
+                                onClick = { viewModel.onTransactionFilterChanged(when (index) { 1 -> "INCOME"; 2 -> "EXPENSE"; else -> "ALL" }) },
                                 text = { Text(title) }
                             )
                         }
@@ -170,13 +170,14 @@ fun DashboardScreen(
             if (uiState.transactions.isEmpty()) {
                 item {
                     Box(Modifier.fillMaxWidth().padding(vertical = 32.dp), Alignment.Center) {
-                        Text("No transactions in this period.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(stringResource(R.string.dashboard_no_transactions_period), color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             } else {
                 items(uiState.transactions, key = { it.transaction.id }) { transactionWithCategoryAndTags ->
                     TransactionItem(
                         transactionWithCategoryAndTags = transactionWithCategoryAndTags,
+                        currency = uiState.currency,
                         onClick = { viewModel.onTransactionClick(transactionWithCategoryAndTags) }
                     )
                 }
@@ -187,143 +188,131 @@ fun DashboardScreen(
 }
 
 @Composable
-fun TransactionItem(transactionWithCategoryAndTags: TransactionWithCategoryAndTags, onClick: () -> Unit) {
-    val transaction = transactionWithCategoryAndTags.transaction
-    val category = transactionWithCategoryAndTags.category
-    val tags = transactionWithCategoryAndTags.tags
+fun TransactionItem(transactionWithCategoryAndTags: TransactionWithCategoryAndTags, currency: String, onClick: () -> Unit) {
+    val transaction = transactionWithCategoryAndTags.transaction; val category = transactionWithCategoryAndTags.category; val tags = transactionWithCategoryAndTags.tags
     val categoryColor = category?.color?.let { try { Color(android.graphics.Color.parseColor(it)) } catch (e: Exception) { Color.Gray } } ?: Color.Gray
-    val categoryIcon = category?.icon?.let { IconHelper.getIcon(it) } ?: Icons.Default.Category
-    val categoryName = category?.name ?: "Uncategorized"
-
-    Card(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)) {
+    val categoryIcon = category?.icon?.let { IconHelper.getIcon(it) } ?: Icons.Default.Category; val categoryName = category?.name ?: "Uncategorized"
+    Card(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp), // <<--- 모서리를 둥글게 수정
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface) // <<--- 흰색 배경 추가
+    ) {
         Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier.size(40.dp).clip(CircleShape).background(categoryColor),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = categoryIcon,
-                    contentDescription = categoryName,
-                    tint = Color.White,
-                    modifier = Modifier.size(24.dp)
-                )
+            Box(modifier = Modifier.size(40.dp).clip(CircleShape).background(categoryColor), contentAlignment = Alignment.Center) {
+                Icon(imageVector = categoryIcon, contentDescription = categoryName, tint = Color.White, modifier = Modifier.size(24.dp))
             }
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(text = transaction.title, style = MaterialTheme.typography.titleMedium)
-                Text(
-                    text = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date(transaction.date)),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Text(text = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date(transaction.date)), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 if (tags.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(8.dp))
                     FlowRow(mainAxisSpacing = 6.dp, crossAxisSpacing = 4.dp) {
                         tags.forEach { tag ->
-                            Surface(
-                                shape = RoundedCornerShape(8.dp),
-                                color = MaterialTheme.colorScheme.secondaryContainer,
-                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                            ) {
-                                Text(
-                                    text = "#${tag.name}",
-                                    fontSize = 12.sp,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                )
+                            Surface(shape = RoundedCornerShape(8.dp), color = MaterialTheme.colorScheme.secondaryContainer, contentColor = MaterialTheme.colorScheme.onSecondaryContainer) {
+                                Text(text = "#${tag.name}", fontSize = 12.sp, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
                             }
                         }
                     }
                 }
             }
             Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = String.format(Locale.US, "%.2f", transaction.amount),
-                color = if (transaction.type == "EXPENSE") MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.SemiBold
-            )
+            Text(text = String.format(Locale.US, "%.2f %s", transaction.amount, currency), color = if (transaction.type == "EXPENSE") MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
         }
     }
 }
 
 @Composable
-fun BalanceCard(balance: Double, totalIncome: Double, totalExpense: Double) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+fun BalanceCard(balance: Double, totalIncome: Double, totalExpense: Double, currency: String) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface) // <<--- 흰색 배경 추가
+    ) {
         Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("Balance", style = MaterialTheme.typography.titleMedium)
-            Text(
-                text = String.format("%.2f EUR", balance),
-                style = MaterialTheme.typography.headlineLarge,
-                fontWeight = FontWeight.Bold
-            )
+            Text(stringResource(R.string.dashboard_balance), style = MaterialTheme.typography.titleMedium)
+            Text(text = String.format("%.2f %s", balance, currency), style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(8.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Income", style = MaterialTheme.typography.bodyMedium)
-                    Text(
-                        String.format("%.2f", totalIncome),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
+                    Text(stringResource(R.string.dashboard_income), style = MaterialTheme.typography.bodyMedium)
+                    Text(String.format("%.2f", totalIncome), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
                 }
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Expense", style = MaterialTheme.typography.bodyMedium)
+                    Text(stringResource(R.string.dashboard_expense), style = MaterialTheme.typography.bodyMedium)
+                    Text(String.format("%.2f", totalExpense), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.error)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun IncomeExpenseProgressBarCard(
+    totalIncome: Double,
+    totalExpense: Double,
+    currency: String,
+    dateFilterName: String
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface) // <<--- 카드 배경색 흰색으로 명시
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = stringResource(R.string.income_vs_expense_title, dateFilterName),
+                style = MaterialTheme.typography.titleMedium
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+
+            val total = totalIncome + totalExpense
+            // --- 크래시 방지 로직 추가 ---
+            if (total > 0) {
+                val incomePercentage = (totalIncome / total).toFloat()
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(24.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                ) {
+                    if (incomePercentage > 0f) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .weight(incomePercentage)
+                                .background(MaterialTheme.colorScheme.primaryContainer)
+                        )
+                    }
+                    if (incomePercentage < 1f) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .weight(1f - incomePercentage)
+                                .background(MaterialTheme.colorScheme.errorContainer)
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
                     Text(
-                        String.format("%.2f", totalExpense),
-                        style = MaterialTheme.typography.titleMedium,
+                        text = stringResource(R.string.dashboard_income) + String.format(": %.2f %s", totalIncome, currency),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = stringResource(R.string.dashboard_expense) + String.format(": %.2f %s", totalExpense, currency),
+                        style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.error
                     )
                 }
-            }
-        }
-    }
-}
-
-@Composable
-fun ExpensesChartCard(pieData: PieData?) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text("This Month's Expenses", style = MaterialTheme.typography.titleMedium)
-            Spacer(modifier = Modifier.height(16.dp))
-            if (pieData != null && pieData.entryCount > 0) {
-                PieChartComposable(pieData = pieData, modifier = Modifier.fillMaxWidth().height(250.dp))
             } else {
-                Box(
-                    modifier = Modifier.fillMaxWidth().height(250.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("No expense data for this month.")
+                Box(modifier = Modifier.fillMaxWidth().height(100.dp), contentAlignment = Alignment.Center) {
+                    Text(stringResource(R.string.dashboard_no_data))
                 }
             }
         }
     }
-}
-
-@Composable
-fun PieChartComposable(pieData: PieData, modifier: Modifier = Modifier) {
-    AndroidView(
-        factory = { context ->
-            PieChart(context).apply {
-                description.isEnabled = false
-                isDrawHoleEnabled = true
-                holeRadius = 58f
-                transparentCircleRadius = 61f
-                setUsePercentValues(true)
-                setEntryLabelColor(Color.Black.toArgb())
-                setEntryLabelTypeface(Typeface.DEFAULT_BOLD)
-                setEntryLabelTextSize(12f)
-                legend.isEnabled = false
-            }
-        },
-        update = { chart ->
-            chart.data = pieData.apply {
-                setValueFormatter(PercentFormatter(chart))
-                setValueTextSize(12f)
-                setValueTextColor(Color.Black.toArgb())
-            }
-            chart.animateY(1400)
-            chart.invalidate()
-        },
-        modifier = modifier
-    )
 }

@@ -1,30 +1,19 @@
 package com.yourdomain.walletmateeu.ui.navigation
 
+import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Analytics
 import androidx.compose.material.icons.filled.Dashboard
-import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.ui.graphics.vector.ImageVector
+import com.yourdomain.walletmateeu.R
 
 sealed class BottomNavItem(
     val route: String,
-    val title: String, // stringResource(id = R.string.xxx) 를 사용하는 것이 이상적
+    @StringRes val titleResId: Int,
     val icon: ImageVector
 ) {
-    object Dashboard : BottomNavItem( // <<--- 이름 변경
-        route = Routes.DASHBOARD, // <<--- 경로 이름 변경
-        title = "Dashboard",    // <<--- 탭 제목 변경
-        icon = Icons.Default.Dashboard // <<--- 아이콘 변경 (Dashboard 아이콘 임포트 필요)
-    )
-    object Analytics : BottomNavItem(
-        route = Routes.ANALYTICS, // 새 경로
-        title = "Analytics",
-        icon = Icons.Default.Analytics
-    )
-    object Settings : BottomNavItem(
-        route = Routes.SETTINGS, // 새 경로
-        title = "Settings",
-        icon = Icons.Default.Settings
-    )
+    object Dashboard : BottomNavItem("dashboard", R.string.bottom_nav_dashboard, Icons.Default.Dashboard)
+    object Analytics : BottomNavItem("analytics", R.string.bottom_nav_analytics, Icons.Default.Analytics)
+    object Settings : BottomNavItem("settings", R.string.bottom_nav_settings, Icons.Default.Settings)
 }

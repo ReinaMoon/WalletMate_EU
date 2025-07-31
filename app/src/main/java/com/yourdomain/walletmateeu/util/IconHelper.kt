@@ -5,19 +5,16 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.ui.graphics.vector.ImageVector
 
 object IconHelper {
-
-    // 모든 아이콘 이름 목록 (검색용)
-    // 참고: 실제로는 수천 개에 달하므로, 여기서는 일부만 예시로 작성합니다.
-    // 실제 프로젝트에서는 빌드 스크립트 등으로 자동 생성하는 것을 권장합니다.
-    val allIconNames = listOf(
+    val allIconNames: List<String> = listOf(
         "Home", "AccountBalanceWallet", "ShoppingCart", "Receipt", "LocalPizza", "Fastfood",
-        "Restaurant", "LocalCafe", "LocalBar", "Flight", "DirectionsCar", "Train",
-        "Subway", "LocalHospital", "Movie", "FitnessCenter", "School", "Pets",
-        "CardGiftcard", "Checkroom", "Computer", "PhoneAndroid", "Savings", "CreditCard"
-        // ... 계속해서 아이콘 이름을 추가할 수 있습니다.
+        "Restaurant", "LocalCafe", "LocalBar", "Flight", "DirectionsCar", "Train", "Subway",
+        "LocalHospital", "Movie", "FitnessCenter", "School", "Pets", "CardGiftcard",
+        "Checkroom", "Computer", "PhoneAndroid", "Savings", "CreditCard", "MonetizationOn",
+        "ShoppingBag", "GasStation", "LocalPharmacy", "Hotel", "FamilyRestroom", "SportsEsports",
+        "Book", "MusicNote", "Build", "Work", "Public", "Place", "Phone", "Wifi", "ShoppingCartCheckout",
+        "MedicalServices", "Park", "TravelExplore", "Payment", "AccountBalance", "TrendingUp"
     )
 
-    // 아이콘 이름을 실제 ImageVector로 변환
     fun getIcon(iconName: String): ImageVector {
         return when (iconName) {
             "Home" -> Icons.Filled.Home
@@ -44,7 +41,29 @@ object IconHelper {
             "PhoneAndroid" -> Icons.Filled.PhoneAndroid
             "Savings" -> Icons.Filled.Savings
             "CreditCard" -> Icons.Filled.CreditCard
-            else -> Icons.Filled.Category // 기본값
+            "MonetizationOn" -> Icons.Filled.MonetizationOn
+            "ShoppingBag" -> Icons.Filled.ShoppingBag
+            "GasStation" -> Icons.Filled.EvStation // EvStation is a good proxy
+            "LocalPharmacy" -> Icons.Filled.LocalPharmacy
+            "Hotel" -> Icons.Filled.Hotel
+            "FamilyRestroom" -> Icons.Filled.FamilyRestroom
+            "SportsEsports" -> Icons.Filled.SportsEsports
+            "Book" -> Icons.Filled.Book
+            "MusicNote" -> Icons.Filled.MusicNote
+            "Build" -> Icons.Filled.Build
+            "Work" -> Icons.Filled.Work
+            "Public" -> Icons.Filled.Public
+            "Place" -> Icons.Filled.Place
+            "Phone" -> Icons.Filled.Phone
+            "Wifi" -> Icons.Filled.Wifi
+            "ShoppingCartCheckout" -> Icons.Filled.ShoppingCartCheckout
+            "MedicalServices" -> Icons.Filled.MedicalServices
+            "Park" -> Icons.Filled.Park
+            "TravelExplore" -> Icons.Filled.TravelExplore
+            "Payment" -> Icons.Filled.Payment
+            "AccountBalance" -> Icons.Filled.AccountBalance
+            "TrendingUp" -> Icons.Filled.TrendingUp
+            else -> Icons.Filled.Category
         }
     }
 }

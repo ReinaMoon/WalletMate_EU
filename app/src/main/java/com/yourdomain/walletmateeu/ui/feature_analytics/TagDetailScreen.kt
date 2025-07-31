@@ -50,6 +50,7 @@ fun TagDetailScreen(
             items(uiState.transactions, key = { it.transaction.id }) { transaction ->
                 TransactionItem(
                     transactionWithCategoryAndTags = transaction,
+                    currency = uiState.currency, // currency 전달
                     onClick = { /* 상세 화면에서는 클릭 비활성화 */ }
                 )
             }
